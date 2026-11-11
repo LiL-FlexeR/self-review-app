@@ -1,6 +1,6 @@
 # Documentation
 
-Target architecture following the workflow clarifications. The application has not been implemented yet; current statuses are in [ROADMAP](../ROADMAP.md).
+Architecture, implementation stages, and code-style guidance following the workflow clarifications. Current implementation status and actual verification are maintained in [ROADMAP](../ROADMAP.md).
 
 ## Navigation and authoritative specifications
 
@@ -16,6 +16,10 @@ Target architecture following the workflow clarifications. The application has n
 | [Frontend design inputs](stages/README.md#frontend-design-inputs) | Required UX/style/token/CSS sources, precedence, and integration/verification rules |
 | [Stages](stages/README.md) | Sequential implementation tasks and verifiable acceptance criteria |
 | [Roadmap](../ROADMAP.md) | Current statuses and budget position |
+| [Common code style](codestyle/common.md) | Shared readability, formatting, naming, imports, tests, and enforcement |
+| [Frontend code style](codestyle/frontend.md) | React component/page/template layout and local/shared types |
+| [Backend code style](codestyle/backend.md) | NestJS module/file layout and service/controller conventions |
+| [Contracts code style](codestyle/contracts.md) | Public schema/type files and exports |
 
 Do not duplicate normative tables across documents: link to the specification that owns the rule. Short explanations in the README and stage tasks do not replace the specifications.
 

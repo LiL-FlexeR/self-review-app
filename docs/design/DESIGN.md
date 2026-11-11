@@ -52,11 +52,11 @@ The role aliases below map to typography.xs, typography.xs-3, typography.sm, and
 
 | Name | Value | Token |
 |------|-------|-------|
-| 4 | 4px | `--spacing-4` |
-| 8 | 8px | `--spacing-8` |
-| 12 | 12px | `--spacing-12` |
-| 16 | 16px | `--spacing-16` |
-| 32 | 32px | `--spacing-32` |
+| 4 | 4px | `--spacing-ref-4` |
+| 8 | 8px | `--spacing-ref-8` |
+| 12 | 12px | `--spacing-ref-12` |
+| 16 | 16px | `--spacing-ref-16` |
+| 32 | 32px | `--spacing-ref-32` |
 
 ### Border Radius
 
@@ -224,13 +224,13 @@ Example Component Prompts:
 
   /* Typography — Scale */
   --text-caption: 11px;
-  --leading-caption: 1.43;
+  --leading-caption: 1.5;
   --text-body-sm: 12px;
-  --leading-body-sm: 1.43;
+  --leading-body-sm: 1.33;
   --text-body: 14px;
   --leading-body: 1.43;
   --text-body-lg: 16px;
-  --leading-body-lg: 1.43;
+  --leading-body-lg: 1.5;
 
   /* Typography — Weights */
   --font-weight-regular: 400;
@@ -238,11 +238,11 @@ Example Component Prompts:
 
   /* Spacing */
   --spacing-unit: 4px;
-  --spacing-4: 4px;
-  --spacing-8: 8px;
-  --spacing-12: 12px;
-  --spacing-16: 16px;
-  --spacing-32: 32px;
+  --spacing-ref-4: 4px;
+  --spacing-ref-8: 8px;
+  --spacing-ref-12: 12px;
+  --spacing-ref-16: 16px;
+  --spacing-ref-32: 32px;
 
   /* Layout */
   --page-max-width: 900px;
@@ -292,20 +292,20 @@ Example Component Prompts:
 
   /* Typography — Scale */
   --text-caption: 11px;
-  --leading-caption: 1.43;
+  --leading-caption: 1.5;
   --text-body-sm: 12px;
-  --leading-body-sm: 1.43;
+  --leading-body-sm: 1.33;
   --text-body: 14px;
   --leading-body: 1.43;
   --text-body-lg: 16px;
-  --leading-body-lg: 1.43;
+  --leading-body-lg: 1.5;
 
   /* Spacing */
-  --spacing-4: 4px;
-  --spacing-8: 8px;
-  --spacing-12: 12px;
-  --spacing-16: 16px;
-  --spacing-32: 32px;
+  --spacing-ref-4: 4px;
+  --spacing-ref-8: 8px;
+  --spacing-ref-12: 12px;
+  --spacing-ref-16: 16px;
+  --spacing-ref-32: 32px;
 
   /* Border Radius */
   --radius-md: 6px;
@@ -317,3 +317,5 @@ Example Component Prompts:
   --shadow-subtle: rgba(0, 0, 0, 0.08) 0px 1px 2px 0px;
 }
 ```
+
+S01 integration adaptation: pixel spacing variables use `--spacing-ref-*` (and utilities such as `p-ref-16`) to avoid overriding Tailwind’s standard numeric spacing scale. Values remain identical to tokens.json. Essential helper copy uses Graphite at 14px; Ash is not used for essential text. The CSS quick-start line heights are reconciled to the token baseline. No custom font assets are bundled, so the declared system fallback stack is used.

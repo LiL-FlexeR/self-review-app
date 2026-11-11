@@ -1,0 +1,202 @@
+@import 'tailwindcss';
+:root {
+	/* Colors */
+	--color-parchment: #faf8f5;
+	--color-soft-paper: #fdfbfa;
+	--color-warm-mist: #d1d1cd;
+	--color-ash: #92918b;
+	--color-graphite: #72706b;
+	--color-ink: #27251e;
+	--color-pure-black: #000000;
+	--color-deep-teal: #016a71;
+
+	/* Typography — Font Families */
+	--font-pplxsans:
+		'pplxSans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+		sans-serif;
+
+	/* Typography — Scale */
+	--text-caption: 11px;
+	--leading-caption: 1.5;
+	--text-body-sm: 12px;
+	--leading-body-sm: 1.33;
+	--text-body: 14px;
+	--leading-body: 1.43;
+	--text-body-lg: 16px;
+	--leading-body-lg: 1.5;
+
+	/* Typography — Weights */
+	--font-weight-regular: 400;
+	--font-weight-medium: 500;
+
+	/* Spacing */
+	--spacing-unit: 4px;
+	--spacing-ref-4: 4px;
+	--spacing-ref-8: 8px;
+	--spacing-ref-12: 12px;
+	--spacing-ref-16: 16px;
+	--spacing-ref-32: 32px;
+
+	/* Layout */
+	--page-max-width: 900px;
+	--section-gap: 32px;
+	--card-padding: 16px;
+	--element-gap: 8px;
+
+	/* Border Radius */
+	--radius-md: 6px;
+	--radius-xl: 12px;
+	--radius-2xl: 16px;
+	--radius-full: 9999px;
+
+	/* Named Radii */
+	--radius-cards: 16px;
+	--radius-chips: 9999px;
+	--radius-inputs: 12px;
+	--radius-buttons: 6px;
+
+	/* Shadows */
+	--shadow-subtle: rgba(0, 0, 0, 0.08) 0px 1px 2px 0px;
+
+	/* Surfaces */
+	--surface-page-canvas: #faf8f5;
+	--surface-card-surface: #fdfbfa;
+	--surface-active-nav: #016a71;
+	--surface-button-fill: #27251e;
+}
+
+@theme {
+	/* Colors */
+	--color-parchment: #faf8f5;
+	--color-soft-paper: #fdfbfa;
+	--color-warm-mist: #d1d1cd;
+	--color-ash: #92918b;
+	--color-graphite: #72706b;
+	--color-ink: #27251e;
+	--color-pure-black: #000000;
+	--color-deep-teal: #016a71;
+
+	/* Typography */
+	--font-pplxsans:
+		'pplxSans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+		sans-serif;
+
+	/* Typography — Scale */
+	--text-caption: 11px;
+	--leading-caption: 1.5;
+	--text-body-sm: 12px;
+	--leading-body-sm: 1.33;
+	--text-body: 14px;
+	--leading-body: 1.43;
+	--text-body-lg: 16px;
+	--leading-body-lg: 1.5;
+
+	/* Spacing */
+	--spacing-ref-4: 4px;
+	--spacing-ref-8: 8px;
+	--spacing-ref-12: 12px;
+	--spacing-ref-16: 16px;
+	--spacing-ref-32: 32px;
+
+	/* Border Radius */
+	--radius-md: 6px;
+	--radius-xl: 12px;
+	--radius-2xl: 16px;
+	--radius-full: 9999px;
+
+	/* Shadows */
+	--shadow-subtle: rgba(0, 0, 0, 0.08) 0px 1px 2px 0px;
+}
+
+:root {
+	--background: var(--color-parchment);
+	--foreground: var(--color-ink);
+	--card: var(--color-soft-paper);
+	--card-foreground: var(--color-ink);
+	--popover: var(--color-soft-paper);
+	--popover-foreground: var(--color-ink);
+	--primary: var(--color-ink);
+	--primary-foreground: var(--color-parchment);
+	--secondary: var(--color-parchment);
+	--secondary-foreground: var(--color-ink);
+	--muted: var(--color-parchment);
+	--muted-foreground: var(--color-graphite);
+	--accent: var(--color-deep-teal);
+	--accent-foreground: #fff;
+	--destructive: var(--color-ink);
+	--destructive-foreground: var(--color-parchment);
+	--border: var(--color-warm-mist);
+	--input: var(--color-warm-mist);
+	--ring: var(--color-deep-teal);
+	--radius: 12px;
+	--sidebar: var(--color-soft-paper);
+	--sidebar-foreground: var(--color-ink);
+	--sidebar-primary: var(--color-ink);
+	--sidebar-primary-foreground: var(--color-parchment);
+	--sidebar-accent: var(--color-parchment);
+	--sidebar-accent-foreground: var(--color-ink);
+	--sidebar-border: var(--color-warm-mist);
+	--sidebar-ring: var(--color-deep-teal);
+}
+@theme inline {
+	--color-background: var(--background);
+	--color-foreground: var(--foreground);
+	--color-card: var(--card);
+	--color-card-foreground: var(--card-foreground);
+	--color-popover: var(--popover);
+	--color-popover-foreground: var(--popover-foreground);
+	--color-primary: var(--primary);
+	--color-primary-foreground: var(--primary-foreground);
+	--color-secondary: var(--secondary);
+	--color-secondary-foreground: var(--secondary-foreground);
+	--color-muted: var(--muted);
+	--color-muted-foreground: var(--muted-foreground);
+	--color-accent: var(--accent);
+	--color-accent-foreground: var(--accent-foreground);
+	--color-destructive: var(--destructive);
+	--color-border: var(--border);
+	--color-input: var(--input);
+	--color-ring: var(--ring);
+	--color-sidebar: var(--sidebar);
+	--color-sidebar-foreground: var(--sidebar-foreground);
+	--color-sidebar-primary: var(--sidebar-primary);
+	--color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+	--color-sidebar-accent: var(--sidebar-accent);
+	--color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+	--color-sidebar-border: var(--sidebar-border);
+	--color-sidebar-ring: var(--sidebar-ring);
+}
+@layer base {
+	* {
+		border-color: var(--border);
+	}
+	body {
+		margin: 0;
+		background: var(--background);
+		color: var(--foreground);
+		font-family: var(--font-pplxsans);
+		font-size: 16px;
+		line-height: 1.5;
+	}
+	h1,
+	h2,
+	h3 {
+		font-weight: 500;
+	}
+	button,
+	input {
+		font: inherit;
+	}
+	button,
+	a,
+	input {
+		touch-action: manipulation;
+	}
+	:focus-visible {
+		outline: 2px solid var(--ring);
+		outline-offset: 3px;
+	}
+	a {
+		text-underline-offset: 3px;
+	}
+}

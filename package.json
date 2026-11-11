@@ -1,0 +1,48 @@
+{
+	"name": "self-review-app",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"workspaces": [
+		"backend",
+		"frontend",
+		"contracts"
+	],
+	"packageManager": "npm@11.13.0",
+	"engines": {
+		"node": ">=24.15 <25",
+		"npm": ">=11 <12"
+	},
+	"scripts": {
+		"build": "npm run generate -w backend && npm run build -w contracts && npm run build -w backend && npm run build -w frontend",
+		"check": "npm run format:check && npm run generate -w backend && npm run build -w contracts && npm run check --workspaces && npm run lint && npm run validate -w backend && node scripts/verify-design.mjs",
+		"test:unit": "vitest run --config vitest.config.ts",
+		"test:integration": "node scripts/integration.mjs",
+		"infra:up": "node scripts/infra.mjs up",
+		"infra:down": "node scripts/infra.mjs down",
+		"db:migrate:test": "node scripts/migrate-test.mjs",
+		"db:migrate:dev": "node --env-file=.env node_modules/prisma/build/index.js migrate dev --config backend/prisma.config.ts",
+		"dev": "npm run build -w contracts && npm run generate -w backend && concurrently -k -n api,worker,web \"npm run dev -w backend\" \"npm run dev:worker -w backend\" \"npm run dev -w frontend\"",
+		"setup": "node scripts/setup-env.mjs",
+		"format": "prettier . --write",
+		"format:check": "prettier . --check",
+		"lint": "eslint . --max-warnings=0"
+	},
+	"devDependencies": {
+		"@swc/core": "1.16.22",
+		"@types/node": "24.19.2",
+		"concurrently": "9.2.5",
+		"eslint": "10.14.0",
+		"eslint-config-prettier": "10.1.8",
+		"eslint-plugin-react-hooks": "7.1.1",
+		"prettier": "3.10.0",
+		"tsx": "4.23.15",
+		"typescript": "6.0.3",
+		"typescript-eslint": "8.72.2",
+		"unplugin-swc": "1.6.0",
+		"vitest": "4.1.12"
+	},
+	"overrides": {
+		"minimatch": "11.0.8"
+	}
+}

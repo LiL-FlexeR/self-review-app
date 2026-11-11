@@ -1,0 +1,220 @@
+generator client {
+  provider = "prisma-client"
+  output = "../src/generated/prisma"
+  moduleFormat = "esm"
+}
+datasource db {
+  provider = "postgresql"
+}
+model User {
+  id String @id @default(uuid()) @db.Uuid
+  email String @unique
+  passwordHash String @map("password_hash")
+  emailVerifiedAt DateTime @map("email_verified_at") @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  sessions AuthSession[]
+  connections Connection[]
+  runs JobRun[]
+  @@map("users")
+}
+model AuthSession {
+  id String @id @default(uuid()) @db.Uuid
+  userId String @map("user_id") @db.Uuid
+  user User @relation(fields:[userId],references:[id],onDelete:Cascade)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz
+  tokens RefreshToken[]
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("auth_sessions")
+}
+model RefreshToken {
+  id String @id @default(uuid()) @db.Uuid
+  sessionId String @map("session_id") @db.Uuid
+  session AuthSession @relation(fields:[sessionId],references:[id],onDelete:Cascade)
+  tokenHash String @unique @map("token_hash")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  expiresAt DateTime @map("expires_at") @db.Timestamptz
+  consumedAt DateTime? @map("consumed_at") @db.Timestamptz
+  replacedById String? @unique @map("replaced_by_id") @db.Uuid
+  replacedBy RefreshToken? @relation("TokenSuccessor",fields:[replacedById,sessionId],references:[id,sessionId],onDelete:NoAction,onUpdate:NoAction)
+  predecessor RefreshToken? @relation("TokenSuccessor")
+  @@unique([id,sessionId])
+  @@unique([replacedById,sessionId])
+  @@index([sessionId,expiresAt])
+  @@map("refresh_tokens")
+}
+model Connection {
+  id String @id @default(uuid()) @db.Uuid
+  ownerId String @map("owner_id") @db.Uuid
+  owner User @relation(fields:[ownerId],references:[id],onDelete:Cascade)
+  provider String
+  mode String
+  displayName String @map("display_name")
+  encryptedCredentials String? @map("encrypted_credentials")
+  credentialVersion Int @default(1) @map("credential_version")
+  sourceUserId String @map("source_user_id")
+  sourceUserName String @map("source_user_name")
+  sourceBaseUrl String? @map("source_base_url")
+  status String @default("active")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  verifiedAt DateTime @default(now()) @map("verified_at") @db.Timestamptz
+  projects SourceProject[]
+  @@index([ownerId])
+  @@map("connections")
+}
+model SourceProject {
+  id String @id @default(uuid()) @db.Uuid
+  connectionId String @map("connection_id") @db.Uuid
+  connection Connection @relation(fields:[connectionId],references:[id],onDelete:Cascade)
+  externalId String @map("external_id")
+  resourceType String @map("resource_type")
+  name String
+  breadcrumb Json @default("[]")
+  runs JobRun[]
+  @@unique([connectionId,externalId])
+  @@map("source_projects")
+}
+model JobRun {
+  id String @id @default(uuid()) @db.Uuid
+  ownerId String @map("owner_id") @db.Uuid
+  owner User @relation(fields:[ownerId],references:[id],onDelete:Cascade)
+  projectId String @map("project_id") @db.Uuid
+  project SourceProject @relation(fields:[projectId],references:[id],onDelete:Cascade)
+  type String
+  trigger String @default("manual")
+  selection Json
+  filters Json @default("{}")
+  subjectSourceUserId String @map("subject_source_user_id")
+  baseSyncRunId String? @map("base_sync_run_id") @db.Uuid
+  baseSyncRun JobRun? @relation("BaseSync",fields:[baseSyncRunId],references:[id],onDelete:NoAction,onUpdate:NoAction)
+  derivedRuns JobRun[] @relation("BaseSync")
+  sourceSyncRunId String? @map("source_sync_run_id") @db.Uuid
+  sourceSyncRun JobRun? @relation("ReviewSource",fields:[sourceSyncRunId],references:[id],onDelete:NoAction,onUpdate:NoAction)
+  reviewRuns JobRun[] @relation("ReviewSource")
+  generateReview Boolean @default(false) @map("generate_review")
+  currentReviewReportId String? @unique @map("current_review_report_id") @db.Uuid
+  currentReviewReport ReviewReport? @relation("CurrentReport",fields:[currentReviewReportId],references:[id],onDelete:SetNull)
+  idempotencyKey String @map("idempotency_key")
+  requestFingerprint String @map("request_fingerprint")
+  state String @default("queued")
+  stage String @default("queued")
+  version Int @default(1)
+  counts Json @default("{}")
+  importComplete Boolean @default(false) @map("import_complete")
+  analysisComplete Boolean @default(false) @map("analysis_complete")
+  coverage Json @default("{}")
+  heartbeatAt DateTime? @map("heartbeat_at") @db.Timestamptz
+  unitDeadlineAt DateTime? @map("unit_deadline_at") @db.Timestamptz
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  startedAt DateTime? @map("started_at") @db.Timestamptz
+  finishedAt DateTime? @map("finished_at") @db.Timestamptz
+  error Json?
+  usage Json @default("{}")
+  trace Json @default("[]")
+  tasks TaskSnapshot[]
+  batches AnalysisBatch[]
+  analysis SyncAnalysis?
+  report ReviewReport? @relation("ProducingReview")
+  sourcedReports ReviewReport[] @relation("ReportSource")
+  attempts ModelAttempt[]
+  @@unique([ownerId,type,idempotencyKey])
+  @@index([projectId,createdAt])
+  @@map("job_runs")
+}
+model TaskSnapshot {
+  id String @id @default(uuid()) @db.Uuid
+  syncRunId String @map("sync_run_id") @db.Uuid
+  syncRun JobRun @relation(fields:[syncRunId],references:[id],onDelete:Cascade)
+  externalId String @map("external_id")
+  identifier String
+  title String
+  description String @db.Text
+  state String
+  assignees Json @default("[]")
+  sourceCreatedAt DateTime @map("source_created_at") @db.Timestamptz
+  sourceUpdatedAt DateTime? @map("source_updated_at") @db.Timestamptz
+  retrievedAt DateTime @map("retrieved_at") @db.Timestamptz
+  safeUrl String? @map("safe_url")
+  detailStatus String @map("detail_status")
+  refreshStatus String @map("refresh_status")
+  commentReadState String @default("not_read") @map("comment_read_state")
+  commentReadAt DateTime? @map("comment_read_at") @db.Timestamptz
+  commentsTruncated Boolean @default(false) @map("comments_truncated")
+  commentErrorCode String? @map("comment_error_code")
+  copiedFromSnapshotId String? @map("copied_from_snapshot_id") @db.Uuid
+  copiedFromSnapshot TaskSnapshot? @relation("CopiedTask",fields:[copiedFromSnapshotId],references:[id],onDelete:NoAction,onUpdate:NoAction)
+  copies TaskSnapshot[] @relation("CopiedTask")
+  comments CommentSnapshot[]
+  @@unique([syncRunId,externalId])
+  @@map("task_snapshots")
+}
+model CommentSnapshot {
+  id String @id @default(uuid()) @db.Uuid
+  taskSnapshotId String @map("task_snapshot_id") @db.Uuid
+  task TaskSnapshot @relation(fields:[taskSnapshotId],references:[id],onDelete:Cascade)
+  externalId String @map("external_id")
+  body String @db.Text
+  author String?
+  sourceCreatedAt DateTime? @map("source_created_at") @db.Timestamptz
+  retrievedAt DateTime @map("retrieved_at") @db.Timestamptz
+  @@unique([taskSnapshotId,externalId])
+  @@map("comment_snapshots")
+}
+model AnalysisBatch {
+  id String @id @default(uuid()) @db.Uuid
+  runId String @map("run_id") @db.Uuid
+  run JobRun @relation(fields:[runId],references:[id],onDelete:Cascade)
+  phase String
+  level Int @default(0)
+  ordinal Int
+  inputIds Json @map("input_ids")
+  state String @default("pending")
+  coverage Json @default("{}")
+  trace Json @default("[]")
+  usage Json @default("{}")
+  output Json?
+  attempts ModelAttempt[]
+  @@unique([runId,phase,level,ordinal])
+  @@unique([id,runId])
+  @@map("analysis_batches")
+}
+model SyncAnalysis {
+  id String @id @default(uuid()) @db.Uuid
+  syncRunId String @unique @map("sync_run_id") @db.Uuid
+  syncRun JobRun @relation(fields:[syncRunId],references:[id],onDelete:Cascade)
+  findings Json
+  limitations Json
+  @@map("sync_analyses")
+}
+model ReviewReport {
+  id String @id @default(uuid()) @db.Uuid
+  reviewRunId String @unique @map("review_run_id") @db.Uuid
+  reviewRun JobRun @relation("ProducingReview",fields:[reviewRunId],references:[id],onDelete:Cascade)
+  sourceSyncRunId String @map("source_sync_run_id") @db.Uuid
+  sourceSyncRun JobRun @relation("ReportSource",fields:[sourceSyncRunId],references:[id],onDelete:Cascade)
+  subjectSourceUserId String @map("subject_source_user_id")
+  draft Json
+  markdown String @db.Text
+  sources Json
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  currentFor JobRun? @relation("CurrentReport")
+  @@map("review_reports")
+}
+model ModelAttempt {
+  id String @id @default(uuid()) @db.Uuid
+  runId String @map("run_id") @db.Uuid
+  run JobRun @relation(fields:[runId],references:[id],onDelete:Cascade)
+  batchId String @map("batch_id") @db.Uuid
+  batch AnalysisBatch @relation(fields:[batchId,runId],references:[id,runId],onDelete:Cascade)
+  attemptNo Int @map("attempt_no")
+  status String
+  providerResponseId String? @map("provider_response_id")
+  usage Json?
+  usageUnknown Boolean @default(true) @map("usage_unknown")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  @@unique([runId,attemptNo])
+  @@index([batchId])
+  @@map("model_attempts")
+}

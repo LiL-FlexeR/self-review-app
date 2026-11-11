@@ -1,0 +1,9 @@
+**/node_modules/**
+**/dist/**
+**/coverage/**
+backend/src/generated/**
+package-lock.json
+**/*.md
+docs/design/**
+.agents/**
+.codex/**

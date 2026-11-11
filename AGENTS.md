@@ -22,6 +22,18 @@ This file guides development of the application. Domain skills are instructions 
 | Screens, visual inputs, theme precedence | [Frontend design inputs](docs/stages/README.md#frontend-design-inputs) |
 | Verification and submission | [S05](docs/stages/S05-reliability-and-tests.md) and [S06](docs/stages/S06-submission.md) |
 
+## Code style
+
+Before changing JavaScript/TypeScript source, tests, or scripts, read [Common code style](docs/codestyle/common.md). Also read the guide for every affected workspace:
+
+- `frontend`: [Frontend code style](docs/codestyle/frontend.md).
+- `backend`: [Backend code style](docs/codestyle/backend.md).
+- `contracts`: [Contracts code style](docs/codestyle/contracts.md).
+
+Workspace guides supplement the common rules without duplicating them. Cross-workspace changes apply all relevant guides. The guides own file-placement and naming conventions; architecture retains workspace responsibilities and dependency boundaries. Skills retain their domain workflows and verification requirements.
+
+Use the committed formatter, linter, and TypeScript configuration. Keep documentation and configuration consistent when changing a rule. Run `npm run format:check` through `npm run check`; ESLint enforces the common naming conventions. Review meaningful names, logical grouping, and file placement manually because formatting alone does not enforce them.
+
 ## Select project skills
 
 Before working in one of these areas, read the linked skill. Load all applicable skills when a task crosses boundaries, and only the references needed for the task.

@@ -1,6 +1,6 @@
 # Architecture
 
-Target design for the updated workflow; no application code has been created. Alternatives and dated version research: [D01](../decisions/D01-stack-and-local-runtime.md). Authentication and credentials: [D04](../decisions/D04-auth-and-credentials.md).
+Target design for the complete workflow. S01 now supplies workspaces, schema, authentication, and the protected UI shell; source adapters, queue execution, snapshots/SSE, and review remain later-stage work. Alternatives and dated version research: [D01](../decisions/D01-stack-and-local-runtime.md). Authentication and credentials: [D04](../decisions/D04-auth-and-credentials.md).
 
 ## Components
 
@@ -24,7 +24,7 @@ flowchart LR
 
 The API authenticates users and accepts commands. The worker executes sync/review independently of the browser tab. Postgres is the source of truth for tasks, runs, results, and refresh-token state. Redis handles the queue, OTP challenges, and rate limits. Access uses JWT cookies under [D04](../decisions/D04-auth-and-credentials.md#limits-and-sessions); no Redis authentication-session store is required. SSE delivers state; it does not store results. Import covers the whole period without a task-count cap; analysis and review process batches and record coverage. [States, idempotency, and recovery](sync-workflow.md).
 
-Docker Compose runs api, worker, postgres, redis, mailpit, and a one-shot migration service. The API and worker share an image with different entrypoints; the API serves the built frontend at localhost:3000 without another reverse proxy. During development, Vite :5173 proxies /api, including SSE. One origin simplifies cookie authentication.
+Docker Compose runs api, worker, postgres, redis, mailpit, and a one-shot migration service. The API and worker share an image with different entrypoints; the API serves the built frontend at localhost:3000 without another reverse proxy. During development, Vite :5173 proxies /api, including SSE. One origin simplifies cookie authentication. `APP_PORT` may override the published Compose port (default 3000); set `APP_ORIGIN` to the matching browser origin. This does not change the internal API port.
 
 APP_ORIGIN identifies the browser-facing origin: http://localhost:3000 for Compose and http://localhost:5173 for the Vite development flow. Route browser API/SSE traffic through the matching origin/proxy and validate the original browser Origin header; rewriting the proxy Host does not replace this check. Use the chosen hostname consistently for host-only cookies.
 
@@ -33,23 +33,38 @@ APP_ORIGIN identifies the browser-facing origin: http://localhost:3000 for Compo
 ```text
 backend/
   src/
-    auth/            # password, OTP, JWT, refresh rotation, CSRF
-    connections/     # credential verification and storage
-    projects/        # catalog and saved-snapshot pages
-    jobs/            # commands, states, SSE, reconciliation
-    agent/           # loop, tool dispatcher, validation, budgets
-    providers/       # Linear, ClickUp, Jira, fixtures
-    reviews/         # saved-snapshot self-review, renderer
-    database/        # Prisma client
-    mail/            # SMTP transport
+    modules/
+      app.module.ts  # HTTP API root module
+      worker.module.ts # worker root module
+      auth/          # password, OTP, JWT, refresh rotation, CSRF
+      connections/   # credential verification and storage
+      projects/      # catalog and saved-snapshot pages
+      jobs/          # commands, states, SSE, reconciliation
+      agent/         # loop, tool dispatcher, validation, budgets
+      providers/     # Linear, ClickUp, Jira, fixtures
+      reviews/       # saved-snapshot self-review, renderer
+    exceptions/      # Nest exception filters and safe HTTP error mapping
+    shared/
+      config/        # ConfigModule, typed ConfigService, Zod environment validation
+      infrastructure/ # InfrastructureModule registers shared providers
+      database/      # DI-managed Prisma client and low-level factory
+      redis/         # DI-managed Redis connection
+      mail/          # DI-managed SMTP transport
+      clock/         # overridable application clock
+    app.ts           # API construction and runtime boundaries
     main.ts          # HTTP API
     worker.ts        # application context and BullMQ worker
   prisma/            # schema and migrations
   fixtures/          # synthetic snapshots and expected invariants
 frontend/
   components.json    # shadcn/ui configuration and aliases
-  src/               # auth, connections, projects, project, report
-    components/ui/   # shadcn/ui component sources added as needed
+  src/
+    App/index.tsx    # router composition; local components live under App/components
+    pages/           # route pages; page-only components live under each page
+    components/ui/   # basic UI, including adapted shadcn/ui, as Name/index.tsx
+    components/templates/ # shared composed blocks such as OTP and AppShell
+    auth/            # browser session and account coordination
+    lib/             # shared frontend infrastructure/utilities
     styles/globals.css # Tailwind entry and semantic theme tokens
 contracts/
   src/               # shared HTTP/SSE schemas and inferred TypeScript types
@@ -58,11 +73,25 @@ docs/
 
 npm workspaces, ESM, strict TS. The root package.json lists three workspaces: backend, frontend, contracts; each has its own package.json, with one lockfile at the root. Contracts builds to JS/d.ts before backend and frontend. The API and worker are two entrypoints in the same backend package. The Docker build context is the repository root so all three packages are available.
 
+Each workspace uses a private `@app/` alias for its own `src/`, following the [backend](../codestyle/backend.md#imports), [frontend](../codestyle/frontend.md#imports), and [contracts](../codestyle/contracts.md#files-and-exports) import rules. Backend/contracts builds resolve aliases to ordinary relative `.js` specifiers through `tsc-alias`, including contracts declarations; API/worker production entrypoints still run directly in Node ESM without an alias loader. Development `tsx` resolves backend's alias, and Vite/shadcn use frontend's alias. Vitest unit projects keep backend, frontend, and contracts aliases separate; the integration configuration uses backend's alias. Public workspace boundaries continue using `@self-review/contracts`, whose exports do not expose a private `@app/` dependency.
+
+Detailed file placement, component directories, module-category folders, naming, and formatting are owned by the code-style guides: [common](../codestyle/common.md), [frontend](../codestyle/frontend.md), [backend](../codestyle/backend.md), and [contracts](../codestyle/contracts.md). This section retains workspace responsibilities and dependency boundaries.
+
 Contracts is an internal library, not a separate service or Nest module. It contains only browser-safe HTTP request/response and SSE schemas, including the public report structure. SDKs, Prisma, configuration, prompts, and internal tool/provider schemas stay in backend. Package publication and a separate container are unnecessary.
 
 A shared package is not required for the application to work: the alternative is server-side Zod schemas and separate frontend types. A small contracts package is chosen so the API and UI share one definition of public states and data; the cost is a package.json and an extra build step. Do not turn it into a library for all business logic.
 
 Do not add a second monorepo tool on top of npm. The provider interface normalizes discovery/list/details/comments, while ModelClient supports scripted offline execution. Only the backend makes direct external calls; the worker does not receive secrets in job payloads.
+
+## Backend dependency injection
+
+Nest owns the backend application dependency graph. AppModule, AuthModule, ConfigModule, InfrastructureModule, and WorkerModule use static module metadata. ConfigModule lives beside ConfigService in `shared/config/`; InfrastructureModule lives in `shared/infrastructure/`. Root and feature modules remain under `modules/`. AuthModule imports ConfigModule/InfrastructureModule and registers AuthService, ChallengesService, CryptoService, PasswordHashService, and AuthController. The API bootstrap creates AppModule and configures HTTP middleware/static routing; it does not create application services or pass an already-constructed AuthService through `register()`. The global SafeErrorsFilter is registered through `APP_FILTER` in AppModule. Expected HTTP failures use the standard Nest exception classes with explicit public `{code,message,retryable}` payloads. The filter validates these payloads against the contracts error schema and adds requestId; unstructured HttpExceptions keep their status with a generic HTTP_ERROR body, while unknown infrastructure failures retain the safe retryable 503 response. Raw error bodies/causes are not forwarded. A custom Failure HTTP error class is not used. WorkerModule imports the same infrastructure module and owns its foundation-readiness provider.
+
+The custom ConfigService in `backend/src/shared/config/config.service.ts` reads and validates the existing environment once per application context, using the existing Zod schema and independent-secret checks in `config.schema.ts`. It exposes immutable validated values and a typed getter. Node's existing `--env-file`/Compose environment handling remains the source of environment loading; no additional configuration package or alternate validation policy is introduced.
+
+InfrastructureModule exports injectable DatabaseService, RedisService, MailService, and ClockService. Database and Redis connections initialize through `onModuleInit` before application readiness. Mail transport is owned by MailService. Each process/context closes its owned database, Redis, and mail resources through `onApplicationShutdown`; explicit `app.close()` and the entrypoints' enabled shutdown hooks use the same lifecycle. PasswordHashService prepares its dummy Argon2 hash in `onModuleInit` and owns Argon2 operations with the existing process-local concurrency limit. CryptoService injects ConfigService/ClockService and owns access-JWT/CSRF operations plus the auth module’s token, SHA-256, HMAC, and comparison helpers. AuthService coordinates authentication through these providers; callers do not pass secrets or signing/verification timestamps to CryptoService. The foundation worker publishes its readiness file only after initialization and successful database/Redis probes, and removes it on shutdown. This does not add queue processors before S02.
+
+HTTP routes, cookie/CSRF rules, token lifetimes, and public payloads remain governed by their existing specifications. Production initialization has no test-specific dependency options. Integration setup imports the same AppModule through Nest's testing module and overrides configuration, mail, clock, or storage providers as needed; child failure-case contexts borrow existing storage clients without taking ownership of their shutdown. Controlled-clock and transport substitutions remain labeled test boundaries.
 
 ## Frontend routing
 
@@ -73,6 +102,8 @@ Nest serves index.html for client-page navigation and deep-link reloads. The SPA
 ## Frontend UI
 
 shadcn/ui provides the component starting points, Tailwind CSS supplies utility styles through its Vite integration, and a global stylesheet defines semantic theme variables. Initialize shadcn/ui in the existing frontend workspace; component source stays in frontend/src/components/ui, with frontend/components.json and aliases configured for the client SPA.
+
+AppShell composes the shadcn Sidebar provider/navigation/inset, including its Sheet-based mobile presentation; AppSidebar owns only application links and account actions. AuthPanel composes Card for shared authentication/recovery pages, and forms/statuses reuse Label/Input/Button/Alert. Component layout and responsive styles use Tailwind classes; globals.css owns tokens, semantic mappings, and base rules under the [frontend styling guide](../codestyle/frontend.md#tailwind-and-component-styling). Mobile navigation uses the Sidebar's md/768px breakpoint; close/focus/overflow behavior must be manually verified at an actual narrow viewport rather than inferred from a build.
 
 Screens and interactions follow [UX.md](../design/UX.md); appearance and theme integration use all required [frontend design inputs](../stages/README.md#frontend-design-inputs). Add components needed by the planned screens and commit their source and dependency lockfile. S01 records the CLI version, preset/primitive family, component origins, and material reference adaptations so later additions use a consistent setup. Source updates require review alongside package updates; composed screens still need the accessibility checks defined in [UX.md](../design/UX.md#shared-states-and-accessibility).
 
@@ -90,7 +121,7 @@ On logout, absolute authentication expiry, refresh revocation, or user/session c
 
 ## Data
 
-This is the authoritative entity specification; concrete Prisma migrations are created in S01. The MVP uses one Postgres SQL schema, public, without separate auth/integrations/agent schemas. Public is a SQL namespace, not permission for public data access. The backend accesses the database, and the application checks user permissions.
+This is the authoritative entity specification; the S01 Prisma schema and initial SQL migration implement these storage foundations. The MVP uses one Postgres SQL schema, public, without separate auth/integrations/agent schemas. Public is a SQL namespace, not permission for public data access. The backend accesses the database, and the application checks user permissions.
 
 | Prisma model | Postgres table | Fields and constraints |
 | --- | --- | --- |
@@ -99,7 +130,7 @@ This is the authoritative entity specification; concrete Prisma migrations are c
 | RefreshToken | public.refresh_tokens | UUID, sessionId FK, unique tokenHash, createdAt, expiresAt, consumedAt, replacedById linking the successor; indexed sessionId/expiry, successor cannot belong to another session; no plaintext token |
 | Connection | public.connections | ownerId, provider, mode, displayName, encryptedCredentials, credentialVersion, sourceUserId, sourceUserName, optional verified sourceBaseUrl for constructing Jira links, status; one live connection per provider per user |
 | SourceProject | public.source_projects | connectionId, externalId, resourceType, name, breadcrumb; unique(connectionId, externalId) |
-| JobRun | public.job_runs | ownerId, projectId, type sync/review, immutable selection/filters, subjectSourceUserId, baseSyncRunId for selected resync, sourceSyncRunId for review, parentSyncRunId (unique for automatic review), generateReview/currentReviewReportId for sync, idempotencyKey, requestFingerprint, state/stage/version, counts, completeness flags, heartbeatAt/unitDeadlineAt, timestamps, error, usage/trace; unique(ownerId,type,idempotencyKey) |
+| JobRun | public.job_runs | ownerId, projectId, type sync/review, trigger manual/automatic, immutable selection/filters, subjectSourceUserId, baseSyncRunId for selected resync, sourceSyncRunId for review, generateReview/currentReviewReportId for sync, idempotencyKey, requestFingerprint, state/stage/version, counts, completeness flags, heartbeatAt/unitDeadlineAt, timestamps, error, usage/trace; unique(ownerId,type,idempotencyKey) |
 | TaskSnapshot | public.task_snapshots | syncRunId, externalId, identifier, title, normalized description, state, assignees[], source timestamps, retrievedAt, safe URL, detail/refresh status, comment-read metadata, copiedFromSnapshotId; unique(syncRunId,externalId) |
 | CommentSnapshot | public.comment_snapshots | taskSnapshotId, externalId, normalized body, author/timestamp, retrievedAt; unique(taskSnapshotId,externalId) |
 | AnalysisBatch | public.analysis_batches | runId, phase, level, ordinal, input snapshot/child IDs, state, coverage, trace/usage, and validated output; unique(runId,phase,level,ordinal) |
@@ -119,7 +150,7 @@ AuthSession and RefreshToken reference User through ownership/FKs; deleting a us
 
 TaskSnapshot also records comment-read state, read timestamp, truncation, and a safe error code. This metadata distinguishes not read, a successful empty read, capped results, and a failed read even when there are no CommentSnapshot rows. Copied tasks retain this metadata and its original timestamps. Successfully refreshed tasks start with comments not read until this run requests them; a stale retained copy preserves old metadata without presenting it as a new read.
 
-JobRun type=review stores sourceSyncRunId pointing to a JobRun with type=sync; ReviewReport stores the same sourceSyncRunId and its producing reviewRunId. Automatic execution additionally has a unique parentSyncRunId. Sync captures generateReview/selection and the token owner's subjectSourceUserId; sourceSyncRun.currentReviewReportId points to the latest valid report for that revision. Completed snapshot data and terminal states are immutable; the current-review metadata pointer changes after successful regeneration. A repeated sync creates new rows. Analysis and reports reference specific Task/CommentSnapshot records, not an updatable latest task. Large raw provider responses are not stored in full: only necessary normalized fields and provenance are retained.
+JobRun type=review stores sourceSyncRunId pointing to a JobRun with type=sync; ReviewReport stores the same sourceSyncRunId and its producing reviewRunId. Trigger defaults to manual for client commands; the backend sets automatic only for a review created after successful sync. A Postgres partial unique index on sourceSyncRunId where type=review and trigger=automatic allows at most one automatic review per snapshot across all states, while manual report versions remain unrestricted by that index. A database CHECK limits trigger to manual or automatic review; the existing review source constraint requires a non-null source. Automatic review is found through sourceSyncRunId/type/trigger within the existing reviewRuns relation. Sync captures generateReview/selection and the token owner's subjectSourceUserId; sourceSyncRun.currentReviewReportId points to the latest valid report for that revision. Completed snapshot data and terminal states are immutable; the current-review metadata pointer changes after successful regeneration. A repeated sync creates new rows. Analysis and reports reference specific Task/CommentSnapshot records, not an updatable latest task. Large raw provider responses are not stored in full: only necessary normalized fields and provenance are retained.
 
 Check ownership through relations on every read/write, including SSE and export; knowing a UUID does not grant access. There is no global catalog of other users' connections or tasks. Connection deletion is blocked during active jobs in the MVP. After confirmation, it cascades through local credentials, snapshots, and reports; it does not revoke the shared personal token at the provider.
 
@@ -179,6 +210,8 @@ Code fixes the period, project, and owner. The self-review subject comes from th
 
 Error format: {error:{code,message,retryable},requestId,runId?}; safe text without provider bodies, SQL, or secrets. Statuses: 400 input, 401 authentication, 403 Origin/CSRF, 404 another user's/missing resource, 409 conflict, 429 rate limit, 502 provider, 503 infrastructure. Auth error codes distinguish missing/expired access, invalid access, and invalid/expired/revoked/reused refresh so recovery does not repeat arbitrary unauthorized requests. Errors in an accepted job are saved in JobRun and available through GET/SSE; they do not turn the earlier 202 into a different HTTP status.
 
+The browser-safe contracts package owns the known `HTTP_ERROR_CODE` and safe `HTTP_ERROR_MESSAGE` catalogs in `contracts/src/errors.ts`, with `THttpErrorCode` inferred from the code values and `TApiError` inferred from the response schema. Backend payloads and frontend recovery comparisons import the catalogs through the public package entrypoint. Contextual message variants preserve existing response copy. Error parsing still accepts unknown string codes/messages for forward compatibility; clients branch on recognized codes rather than message text.
+
 ## Modes and configuration
 
 Modes are described in the README. APP_MODE is a server/runtime setting that selects available source adapters and the model client; it is not a user preference. Connection.mode distinguishes fixture from live source data, independently of whether a real or scripted model is used. All modes use the same authentication, Postgres, Redis, and SSE path. Demo/offline creates a fixture connection owned by the current user. The API does not accept arbitrary model/transport choices in requests. Never switch live to offline because of an error.
@@ -197,13 +230,16 @@ Email delivery is configured separately from APP_MODE: Mailpit is the default SM
 | OPENAI_MODEL | gpt-5.4-mini-2026-03-17; backend explicitly applies reasoning.effort=low in every AI stage per [D03](../decisions/D03-bounded-agent.md#model-and-api); changes require capability/limit verification |
 | SMTP_HOST/PORT/SECURE | Locally mailpit:1025; external SMTP is explicitly configured |
 | SMTP_USER/PASSWORD/FROM | If required, backend only; local SMTP has no authentication |
+| APP_PORT | Optional Compose host port, default 3000; match APP_ORIGIN when overriding |
+| MAIL_DELIVERY | local for Mailpit UI hint, external for an ordinary inbox; independent of APP_MODE |
+| REDIS_PREFIX | Namespaces OTP/rate-limit keys; tests use a separate Redis DB and fixed prefix |
 | APP_ORIGIN | Browser-facing Origin allowlist: http://localhost:3000 for Compose, http://localhost:5173 for Vite dev; not the proxied backend Host |
 
 Keep the root .env outside Git. Do not use VITE_ for secrets or inject them into Docker build args/image layers. Pin image and package versions; startup must not use latest. The main Compose setup does not expose Postgres/Redis externally; app and Mailpit UI bind to 127.0.0.1. A development profile can expose infrastructure ports on loopback when needed.
 
 ## Commands
 
-Planned scripts; package.json, Compose, and migrations do not exist yet.
+These scripts exist from S01. Integration coverage currently exercises authentication and storage constraints; queue/model/provider execution is added in its owning stages.
 
 | Command | Purpose |
 | --- | --- |
@@ -216,7 +252,7 @@ Planned scripts; package.json, Compose, and migrations do not exist yet.
 | npm run dev | Build contracts + backend API/worker watch + frontend Vite; mode from .env |
 | npm run check | Typecheck all workspaces, lint, Prisma schema validation |
 | npm run test:unit | Vitest without external accounts |
-| npm run test:integration | Supertest + real Postgres/Redis and worker; controlled model/tracker/SMTP adapters |
+| npm run test:integration | Supertest + isolated real Postgres/Redis; S01 stubs SMTP, later stages add worker/model/tracker coverage |
 | npm run build | Prisma generate in backend, contracts → backend (API/worker) → frontend |
 
 Choose Node Debian slim for Docker to avoid Alpine/native dependency complications. Prisma 7 uses the pg driver adapter; pin its package consistently with the Prisma CLI/client in S01. Vitest/SWC must preserve Nest decorator metadata; test transformation does not replace typechecking.

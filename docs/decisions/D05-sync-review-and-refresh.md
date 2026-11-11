@@ -18,6 +18,8 @@ Confirmed default: `generateReview=false`, matching the initially unchecked UI o
 
 Sync and review are two stages of one user workflow, with separate persisted JobRun/usage. After a succeeded sync, a review child is created automatically only when generateReview=true; otherwise no automatic review is created. The worker does not wait for the child while holding a slot. One ReviewService serves the child and the manual button; all tasks are processed in batches according to [D06](D06-all-period-tasks-and-batches.md), without a task count limit. Neither a new general-purpose report-writing tool nor a second research agent is needed.
 
+JobRun uses trigger=manual by default and trigger=automatic for the automatic review. Both review paths reference their saved source through sourceSyncRunId, with no separate parent relation. A partial unique index permits at most one automatic continuation per source across all states while allowing manual regeneration. Trigger is set by backend code rather than a client-supplied field; the database rejects unsupported trigger values and automatic sync jobs. This simplification was explicitly approved on 2026-11-11.
+
 ## Subject and scope
 
 Connection confirms the token owner's sourceUserId through the API; sync fixes that ID. Review describes this user's eligible tasks across the entire selected snapshot, including membership in ClickUp assignees[]. Do not guess identity from email or treat assignment itself as proof of contribution. An arbitrary developerId is excluded from the API.

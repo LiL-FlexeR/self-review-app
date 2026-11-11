@@ -1,0 +1,31 @@
+services:
+  postgres:
+    image: postgres:18.6-bookworm@sha256:f1ea2a1a4fb7b68d4836be1fdcb8a6466a89b072158bf9d97663600538c294c5
+    environment:
+      { POSTGRES_USER: self_review, POSTGRES_PASSWORD: local_dev, POSTGRES_DB: self_review }
+    ports: ['127.0.0.1:55432:5432']
+    volumes:
+      [
+        'dev_postgres:/var/lib/postgresql',
+        './scripts/init-db.sql:/docker-entrypoint-initdb.d/01-test.sql:ro',
+      ]
+    healthcheck:
+      {
+        test: ['CMD-SHELL', 'pg_isready -U self_review -d self_review_test'],
+        interval: 2s,
+        timeout: 3s,
+        retries: 30,
+      }
+  redis:
+    image: redis:8.4.8@sha256:319f54e668c14f68cee51d1fdf9dba699deecac048fc0e52962433a3ef5562c0
+    command: ['redis-server', '--appendonly', 'yes', '--maxmemory-policy', 'noeviction']
+    ports: ['127.0.0.1:56379:6379']
+    volumes: ['dev_redis:/data']
+    healthcheck: { test: ['CMD', 'redis-cli', 'ping'], interval: 2s, timeout: 3s, retries: 30 }
+  mailpit:
+    image: axllent/mailpit:v1.32.0
+    ports: ['127.0.0.1:8025:8025', '127.0.0.1:1025:1025']
+    healthcheck: { test: ['CMD', '/mailpit', 'readyz'], interval: 2s, timeout: 3s, retries: 30 }
+volumes:
+  dev_postgres:
+  dev_redis:

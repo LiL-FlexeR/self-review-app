@@ -1,0 +1,46 @@
+{
+	"name": "@self-review/backend",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"generate": "prisma generate",
+		"validate": "prisma validate",
+		"build": "tsc -p tsconfig.json && tsc-alias -p tsconfig.json",
+		"check": "tsc --noEmit -p tsconfig.test.json",
+		"dev": "node --env-file=../.env --watch --import tsx src/main.ts",
+		"dev:worker": "node --env-file=../.env --watch --import tsx src/worker.ts",
+		"migrate:dev": "prisma migrate dev",
+		"migrate": "prisma migrate deploy"
+	},
+	"dependencies": {
+		"@nestjs/common": "12.4.2",
+		"@nestjs/core": "12.4.2",
+		"@nestjs/platform-express": "12.4.2",
+		"@prisma/adapter-pg": "7.10.1",
+		"@prisma/client": "7.10.1",
+		"@self-review/contracts": "*",
+		"argon2": "0.44.0",
+		"bullmq": "5.81.5",
+		"cookie-parser": "1.4.7",
+		"express": "5.3.0",
+		"ioredis": "5.11.1",
+		"jose": "6.2.17",
+		"nodemailer": "10.5.0",
+		"pg": "8.23.1",
+		"reflect-metadata": "0.2.2",
+		"rxjs": "7.8.2",
+		"zod": "4.6.7"
+	},
+	"devDependencies": {
+		"@nestjs/testing": "12.4.2",
+		"@types/cookie-parser": "1.4.10",
+		"@types/express": "5.0.6",
+		"@types/nodemailer": "7.0.12",
+		"@types/pg": "8.23.1",
+		"@types/supertest": "6.0.3",
+		"prisma": "7.10.1",
+		"supertest": "7.3.2",
+		"tsc-alias": "1.9.10"
+	}
+}

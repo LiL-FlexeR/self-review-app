@@ -1,0 +1,18 @@
+{
+	"extends": "../tsconfig.base.json",
+	"compilerOptions": {
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"declaration": true,
+		"rootDir": "src",
+		"outDir": "dist",
+		"paths": {
+			"@app/*": ["./src/*.ts"]
+		}
+	},
+	"include": ["src/**/*.ts"],
+	"tsc-alias": {
+		"resolveFullPaths": true,
+		"resolveFullExtension": ".js"
+	}
+}

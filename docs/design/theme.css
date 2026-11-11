@@ -23,11 +23,11 @@
   --leading-body-lg: 1.5;
 
   /* Spacing */
-  --spacing-4: 4px;
-  --spacing-8: 8px;
-  --spacing-12: 12px;
-  --spacing-16: 16px;
-  --spacing-32: 32px;
+  --spacing-ref-4: 4px;
+  --spacing-ref-8: 8px;
+  --spacing-ref-12: 12px;
+  --spacing-ref-16: 16px;
+  --spacing-ref-32: 32px;
 
   /* Border Radius */
   --radius-md: 6px;
