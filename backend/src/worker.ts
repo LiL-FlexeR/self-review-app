@@ -13,6 +13,6 @@ try {
 	});
 	app.enableShutdownHooks();
 } catch {
-	console.error('Foundation worker startup failed. Check configuration and dependencies.');
+	console.error('Workflow worker startup failed. Check configuration and dependencies.');
 	process.exit(1);
 }

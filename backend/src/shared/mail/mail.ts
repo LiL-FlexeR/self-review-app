@@ -2,6 +2,7 @@ import nodemailer from 'nodemailer';
 import type { TConfig } from '@app/shared/config/config.schema';
 
 export interface IMail {
+	verify(): Promise<void>;
 	send(email: string, code: string): Promise<void>;
 	close?(): void;
 }
@@ -15,12 +16,17 @@ export function mail(configuration: TConfig): IMail {
 			? { user: configuration.SMTP_USER, pass: configuration.SMTP_PASSWORD }
 			: undefined,
 		connectionTimeout: 5000,
+		greetingTimeout: 5000,
 		socketTimeout: 5000,
 		logger: false,
 		debug: false,
 	});
 
 	return {
+		async verify() {
+			await transport.verify();
+		},
+
 		close() {
 			transport.close();
 		},

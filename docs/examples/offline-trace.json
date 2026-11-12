@@ -1,0 +1,80 @@
+{
+	"items": [
+		{
+			"batchId": "f0aaa6d4-bb5a-4d93-a7ab-6f3d4acb2efe",
+			"level": 0,
+			"events": [
+				{
+					"event": "unit_started",
+					"runId": "98b978cd-7732-437d-8129-558662f0cb1d",
+					"batchId": "f0aaa6d4-bb5a-4d93-a7ab-6f3d4acb2efe",
+					"taskCount": 6
+				},
+				{
+					"event": "model_started",
+					"attempt": 1
+				},
+				{
+					"mode": "scripted",
+					"event": "model_completed",
+					"usage": null,
+					"attempt": 1
+				},
+				{
+					"tool": "list_issues",
+					"bytes": 920,
+					"event": "tool_completed"
+				},
+				{
+					"event": "model_started",
+					"attempt": 2
+				},
+				{
+					"mode": "scripted",
+					"event": "model_completed",
+					"usage": null,
+					"attempt": 2
+				},
+				{
+					"tool": "get_issue_details",
+					"bytes": 4298,
+					"event": "tool_completed"
+				},
+				{
+					"event": "model_started",
+					"attempt": 3
+				},
+				{
+					"mode": "scripted",
+					"event": "model_completed",
+					"usage": null,
+					"attempt": 3
+				},
+				{
+					"tool": "get_issue_comments",
+					"count": 1,
+					"event": "tool_comments",
+					"reason": "Additional outcome evidence requested after description read.",
+					"issueId": "DEMO-101",
+					"cacheHit": false
+				},
+				{
+					"tool": "get_issue_comments",
+					"bytes": 519,
+					"event": "tool_completed"
+				},
+				{
+					"event": "model_started",
+					"attempt": 4
+				},
+				{
+					"mode": "scripted",
+					"event": "model_completed",
+					"usage": null,
+					"attempt": 4
+				}
+			]
+		}
+	],
+	"nextCursor": null
+}

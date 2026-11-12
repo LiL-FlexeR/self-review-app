@@ -6,6 +6,7 @@ import { Status } from '@app/components/ui/Status';
 import { AuthPage } from '@app/pages/auth';
 import { OtpPage } from '@app/pages/otp';
 import { ConnectionsPage } from '@app/pages/connections';
+import { ProjectPage } from '@app/pages/project';
 import { ProjectsPage } from '@app/pages/projects';
 import { AuthPanel } from '@app/components/templates/AuthPanel';
 import { NotFoundPage } from '@app/pages/not-found';
@@ -68,7 +69,7 @@ export function SessionRoutes() {
 			/>
 			<Route path="/connections" element={<ConnectionsPage />} />
 			<Route path="/projects" element={<ProjectsPage />} />
-			<Route path="/projects/:id" element={<ProjectsPage />} />
+			<Route path="/projects/:id" element={<ProjectPage />} />
 			<Route path="/" element={<Navigate to={user ? '/connections' : '/login'} replace />} />
 			<Route path="*" element={<NotFoundPage />} />
 		</Routes>

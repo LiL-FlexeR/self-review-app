@@ -95,6 +95,7 @@ beforeAll(async () => {
 		config: configuration,
 		staticDir,
 		mail: {
+			verify: async () => undefined,
 			async send(email, code) {
 				codes.set(email, code);
 			},
@@ -387,12 +388,51 @@ describe('HTTP password and OTP', () => {
 		);
 		expect((await post('login', { email: session.email, password })).status).toBe(429);
 	});
+	it('checks SMTP readiness without sending mail and recovers after an outage', async () => {
+		let smtpAvailable = true;
+		let sentMessages = 0;
+		const readiness = await createTestApp({
+			config: configuration,
+			db: runtime.db,
+			redis: runtime.redis,
+			mail: {
+				async verify() {
+					if (!smtpAvailable) {
+						throw Error('private SMTP connection details');
+					}
+				},
+				async send() {
+					sentMessages++;
+				},
+			},
+		});
+		const server = readiness.app.getHttpServer();
+
+		try {
+			expect((await request(server).get('/api/health/ready')).status).toBe(200);
+
+			smtpAvailable = false;
+			const unavailable = await request(server).get('/api/health/ready');
+
+			expect(unavailable.status).toBe(503);
+			expect(unavailable.body).toEqual({ status: 'unavailable' });
+			expect((await request(server).get('/api/health')).status).toBe(200);
+
+			smtpAvailable = true;
+			expect((await request(server).get('/api/health/ready')).status).toBe(200);
+			expect(sentMessages).toBe(0);
+		} finally {
+			await readiness.close();
+		}
+	});
+
 	it('invalidates a rejected SMTP challenge and grants no tokens', async () => {
 		const failing = await createTestApp({
 			config: configuration,
 			db: runtime.db,
 			redis: runtime.redis,
 			mail: {
+				verify: async () => undefined,
 				async send() {
 					throw Error('private SMTP data');
 				},

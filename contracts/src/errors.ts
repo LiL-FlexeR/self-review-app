@@ -1,6 +1,10 @@
 import { z as zod } from 'zod';
 
 export const HTTP_ERROR_CODE = {
+	RESOURCE_NOT_FOUND: 'RESOURCE_NOT_FOUND',
+	JOB_CONFLICT: 'JOB_CONFLICT',
+	SNAPSHOT_UNAVAILABLE: 'SNAPSHOT_UNAVAILABLE',
+	MODE_UNAVAILABLE: 'MODE_UNAVAILABLE',
 	INPUT_INVALID: 'INPUT_INVALID',
 	ORIGIN_INVALID: 'ORIGIN_INVALID',
 	CSRF_INVALID: 'CSRF_INVALID',
@@ -27,6 +31,11 @@ export const HTTP_ERROR_CODE = {
 export type THttpErrorCode = (typeof HTTP_ERROR_CODE)[keyof typeof HTTP_ERROR_CODE];
 
 export const HTTP_ERROR_MESSAGE = {
+	RESOURCE_NOT_FOUND: 'Resource not found.',
+	JOB_CONFLICT:
+		'Another operation is active, or the command key was reused with different input.',
+	SNAPSHOT_UNAVAILABLE: 'Choose a completed snapshot; partial data requires acknowledgment.',
+	MODE_UNAVAILABLE: 'This source is unavailable in the configured mode.',
 	INPUT_INVALID: 'Check the submitted fields.',
 	ORIGIN_INVALID: 'Request origin is not allowed.',
 	CSRF_INVALID: 'Please reload and try again.',

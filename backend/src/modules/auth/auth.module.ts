@@ -11,6 +11,6 @@ import { PasswordHashService } from '@app/modules/auth/services/password-hash.se
 	imports: [ConfigModule, InfrastructureModule],
 	controllers: [AuthController],
 	providers: [AuthService, ChallengesService, CryptoService, PasswordHashService],
-	exports: [AuthService],
+	exports: [AuthService, CryptoService],
 })
 export class AuthModule {}

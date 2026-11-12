@@ -43,3 +43,7 @@ docker compose up --build
 ```
 
 Run the full journey from the [example](../architecture/agent-workflow.md#example-run) offline, then repeat with APP_MODE=demo + OPENAI_API_KEY and the live model. Confirm access to the selected snapshot; if unavailable, record the blocker rather than presenting a scripted result as a live smoke test. Save a synthetic JSON/Markdown example and a safe trace.
+
+## Implementation checkpoint — 2026-11-12
+
+Offline code and verification are recorded in [ROADMAP](../../ROADMAP.md). Executed synthetic output and safe trace live in [examples](../examples/README.md). The user explicitly requested continuing without the unavailable OpenAI key and leaving this stage unfinished. Do not treat offline/protocol tests as the required live-model or manual visual acceptance checks.

@@ -4,6 +4,8 @@ import { Test } from '@nestjs/testing';
 import { ExpressAdapter } from '@nestjs/platform-express';
 import type { Redis } from 'ioredis';
 import { configureHttpApplication } from '@app/app';
+import { JobsModule } from '@app/modules/jobs/jobs.module';
+import { ProcessorService } from '@app/modules/jobs/services/processor.service';
 import { AppModule } from '@app/modules/app.module';
 import { AuthService } from '@app/modules/auth/services/auth.service';
 import type { TConfig } from '@app/shared/config/config.schema';
@@ -25,6 +27,7 @@ export interface IRuntime {
 
 interface ITestAppOptions {
 	config?: TConfig;
+	worker?: boolean;
 	db?: TDatabase;
 	redis?: Redis;
 	mail?: IMail;
@@ -33,7 +36,10 @@ interface ITestAppOptions {
 }
 
 export async function createTestApp(options: ITestAppOptions = {}): Promise<IRuntime> {
-	const builder = Test.createTestingModule({ imports: [AppModule] });
+	const builder = Test.createTestingModule({
+		imports: [AppModule, ...(options.worker ? [JobsModule] : [])],
+		providers: options.worker ? [ProcessorService] : [],
+	});
 	const configuration = options.config;
 
 	if (configuration) {

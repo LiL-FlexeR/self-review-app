@@ -12,6 +12,10 @@ export class MailService implements IMail, OnApplicationShutdown {
 		this.transport = mail(configuration.values);
 	}
 
+	verify(): Promise<void> {
+		return this.transport.verify();
+	}
+
 	send(email: string, code: string): Promise<void> {
 		return this.transport.send(email, code);
 	}

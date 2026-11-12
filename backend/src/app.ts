@@ -10,6 +10,7 @@ import path from 'node:path';
 import { ConfigService } from '@app/shared/config/config.service';
 import { DatabaseService } from '@app/shared/database/database.service';
 import { RedisService } from '@app/shared/redis/redis.service';
+import { MailService } from '@app/shared/mail/mail.service';
 import { AppModule } from '@app/modules/app.module';
 
 export function configureHttpApplication(
@@ -19,6 +20,7 @@ export function configureHttpApplication(
 	const configuration = app.get(ConfigService).values;
 	const db = app.get(DatabaseService).client;
 	const redis = app.get(RedisService).client;
+	const mail = app.get(MailService);
 	const server = app.getHttpAdapter().getInstance() as express.Express;
 
 	server.disable('x-powered-by');
@@ -53,8 +55,7 @@ export function configureHttpApplication(
 	server.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
 	server.get('/api/health/ready', async (_req, res) => {
 		try {
-			await db.$queryRaw`SELECT 1`;
-			await redis.ping();
+			await Promise.all([db.$queryRaw`SELECT 1`, redis.ping(), mail.verify()]);
 			res.json({ status: 'ready' });
 		} catch {
 			res.status(503).json({ status: 'unavailable' });

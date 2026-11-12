@@ -2,7 +2,7 @@
 
 A web application for preparing developer self-reviews from Linear, ClickUp, and Jira Cloud tasks. Users connect task sources, synchronize a project, inspect saved tasks, and create a report with quotations and source references.
 
-S01 provides the npm workspaces, Docker infrastructure, Prisma schema/migration, email/password + OTP authentication, coordinated session renewal, and protected UI shell. Tracker connections, queue execution, snapshots/SSE, and self-review are future stages. Current stage status and actual verification are maintained in [ROADMAP](ROADMAP.md) and the [S01 stage brief](docs/stages/S01-foundation.md).
+S01 provides authentication and infrastructure. S02 adds an owned synthetic source, paginated project/task browsing, BullMQ synchronization, immutable snapshots, SSE, bounded model tools, manual/automatic self-review, selective refresh, report versions, and JSON/Markdown export. Offline runs the real authentication/queue/storage path with an explicitly scripted model. The OpenAI SDK path is implemented but has not been verified against a live account. S02 remains **in_progress** because live-model and manual browser acceptance are unverified; actual verification and limitations are in [ROADMAP](ROADMAP.md). Real tracker adapters remain S03/S04 work.
 
 ## Problem and users
 
@@ -45,12 +45,12 @@ Use a browser with Web Locks on localhost/HTTPS. Tokens stay in HttpOnly cookies
 
 ```bash
 npm run setup
-docker compose up --build
+docker compose up -d --build --wait
 ```
 
 `setup` creates a gitignored, mode-0600 `.env` with three independent random secrets, preserving an existing file. Alternatively copy `.env.example` and generate each secret independently with `openssl rand -base64 32`. Migration completes before API/worker startup. Never commit `.env`.
 
-Open [localhost:3000](http://localhost:3000), create an account, open the email in [Mailpit :8025](http://localhost:8025), and enter the OTP. The Connections/Projects pages currently show explicit S01 empty states. Mailpit captures local messages; it does not deliver them to a real inbox. External SMTP is configurable but not live-verified.
+Open [localhost:3000](http://localhost:3000), create an account, open the email in [Mailpit :8025](http://localhost:8025), and enter the OTP. On Connections, choose **Add demo source**, browse Projects, and open **Demo platform**. Mailpit captures local messages; it does not deliver them to a real inbox. External SMTP is configurable but not live-verified.
 
 If port 3000 is occupied, use `APP_PORT=3001 APP_ORIGIN=http://localhost:3001 docker compose up --build`, then open [localhost:3001](http://localhost:3001). Cookies require a consistent hostname; use localhost throughout. Stop with `docker compose down` (volumes retained). Compose and the development infrastructure share Mailpit ports, so stop one before starting the other.
 
@@ -67,15 +67,27 @@ If the backend port is occupied, prefix the dev command with `PORT=3002 DEV_API_
 
 Open [localhost:5173](http://localhost:5173); Vite proxies `/api` to port 3000 without rewriting Origin. `DATABASE_URL` in the generated `.env` targets the loopback dev database. Test migration/test scripts always select a separate `self_review_test` DB, Redis DB 15, and `s01-test:` prefix. They never inherit user-data endpoints. `infra:down` stops without deleting volumes. A managed Linux executor may select its daemon with `SELF_REVIEW_DOCKER_HOST=unix:///var/run/docker.sock` for the infra scripts.
 
-Future modes (only authentication and shell exist in S01):
+For API/worker in Docker with the Vite frontend, stop the root `npm run dev` process and the separate development infrastructure first, then run:
+
+```bash
+APP_PORT=3001 APP_ORIGIN=http://localhost:5173 docker compose up -d --build --wait
+npm run build -w contracts
+DEV_API_PORT=3001 npm run dev -w frontend
+```
+
+Keep using the same Compose project name (`-p` if previously specified). Open [localhost:5173](http://localhost:5173); browser requests to `/api` remain on that origin and Vite forwards them to the published API port. API code changes require a Compose rebuild. The API keeps port 3000 inside its container; APP_PORT changes only its host mapping.
+
+`--wait` checks API readiness, including SMTP connectivity/authentication from the API container without sending a message. Mailpit's own healthcheck only checks its internal readiness; it does not prove that API can reach it. A readiness failure prevents reporting a successful startup, but does not automatically repair Docker networking or prove email delivery to a recipient. Inspect `docker compose ps` and `docker compose logs api mailpit`. If an existing Mailpit container has lost its Compose network attachment, recover just that service with `docker compose up -d --force-recreate --no-deps --wait mailpit`, then repeat the startup command. This recreates Mailpit's temporary mailbox; Postgres/Redis volumes are retained.
+
+Runtime modes:
 
 | APP_MODE | Data and model | External keys |
 | --- | --- | --- |
 | offline — default | Synthetic source and scripted model; the entire auth/DB/queue/SSE workflow is real | None |
 | demo | Synthetic source + real OpenAI | OPENAI_API_KEY on the worker |
-| live | Linear, ClickUp, Jira Cloud + OpenAI | OpenAI on the worker; tracker tokens are entered in the UI |
+| live — future S03/S04 adapters | Linear, ClickUp, Jira Cloud + OpenAI; fixture creation is rejected | OpenAI on the worker; tracker tokens will be entered in the UI |
 
-In the planned application, every mode requires email + password + OTP. Offline uses the same authentication/storage/queue path and clearly labels its scripted model. Full [configuration](docs/architecture/overview.md#modes-and-configuration) and [authentication and secret-handling rules](docs/decisions/D04-auth-and-credentials.md).
+Every mode requires email + password + OTP. Offline uses the same authentication/storage/queue path and clearly labels its scripted model. Full [configuration](docs/architecture/overview.md#modes-and-configuration) and [authentication and secret-handling rules](docs/decisions/D04-auth-and-credentials.md).
 
 ## Code style
 
@@ -103,19 +115,29 @@ npm run test:integration
 npm run build
 ```
 
-S01 tests cover authentication, actual Postgres/Redis concurrency and failures, SQL constraints, routing, and client session coordination. SMTP is substituted in integration tests; the browser smoke test uses real Nodemailer → Mailpit. No tracker or model requests are part of S01. The [verification notes](ROADMAP.md#s01-implementation-and-verification--2026-11-11) distinguishes actual results from unavailable checks.
+Tests cover authentication, storage constraints, real BullMQ/Postgres/Redis execution, the 6/137-task cases, source validation, automatic/manual review, report rollback, selective refresh, ownership, enqueue-gap recovery, SSE disconnect/API restart, and client recovery. Integration substitutes SMTP and the external model/source boundaries. SDK tests use a synthetic HTTP transport and do not prove live OpenAI access. See [actual stage verification](ROADMAP.md).
 
 Manual S01 check: signup → Mailpit → OTP → protected shell → open a second tab → sign out → confirm both tabs clear the account → sign in with password and a fresh OTP. Reload `/connections` or `/projects`; missing `/api` and asset paths retain 404 responses. Authentication expiry and competing refreshes are covered with a controlled test clock and real storage.
 
+## S02 walkthrough
+
+1. Sign up, read the OTP in Mailpit, and enter it. Add the demo source on Connections.
+2. Open Projects → Demo platform. Keep **2026-10-01–2026-10-31 (UTC)** and synchronize. The automatic-review checkbox starts unchecked.
+3. Expect **6 saved tasks** across all assignees. Inspect a task's saved description/comments and the safe execution trace.
+4. Choose **Create self-review**, or request automatic review on a new sync. The subject is **Anna / demo-anna**, with **5 qualifying tasks**. Export the saved JSON and Markdown.
+5. Select DEMO-101 and **Refresh selected**. Confirm the base snapshot and optional review. A new snapshot contains one refreshed task and copies retaining original timestamps. Historical reports remain accessible through snapshot history.
+6. Open **137-task pagination example**, synchronize, and browse every task page. All 137 tasks and 14 analysis leaves are processed; review reduction includes the last batch.
+7. Close/reopen the project URL or restart the API. Saved data remains. Reconnect only reads persisted progress and does not start model work.
+
+Generation uses the configured model and can incur new usage. Opening/exporting never generates. Partial-source review requires explicit acknowledgment; failed regeneration preserves the old valid report.
+
+For live-model verification, set `APP_MODE=demo` and `OPENAI_API_KEY` in the gitignored server `.env`, then recreate API/worker. The pinned model is `gpt-5.4-mini-2026-03-17`, reasoning `low`, with no fallback. Repeat Demo platform and Description evidence example; inspect actual comment choices and quotations. This live check remains unexecuted. Never put the key into a `VITE_` variable or a request body.
+
 ## Example result
 
-Planned example, not output from an actual execution:
+[Executed offline JSON](docs/examples/offline-review.json), [Markdown](docs/examples/offline-review.md), and [safe trace](docs/examples/offline-trace.json) come from the integration workflow with synthetic data and scripted model output. Their UUIDs identify that isolated test execution, not records in a user's database. Usage is explicitly unknown/scripted; this is not a live-model result.
 
-> A comment on DEMO-101 reports that p95 decreased from 1200 to 900 ms on staging, based on 1000 requests. Production impact and individual contribution are not confirmed.
->
-> DEMO-102 describes retries and is in progress. Canceled DEMO-103 is not treated as a completed achievement.
-
-[Input, tool calls, expected JSON, and invariants](docs/architecture/agent-workflow.md#example-run).
+[Fixture inputs and acceptance invariants](docs/architecture/agent-workflow.md#example-run).
 
 ## Limitations and business status
 

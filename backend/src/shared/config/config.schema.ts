@@ -2,6 +2,8 @@ import { z as zod } from 'zod';
 
 const Schema = zod.object({
 	APP_ORIGIN: zod.url(),
+	OPENAI_API_KEY: zod.string().min(1).optional(),
+	OPENAI_MODEL: zod.literal('gpt-5.4-mini-2026-03-17').default('gpt-5.4-mini-2026-03-17'),
 	APP_MODE: zod.enum(['offline', 'demo', 'live']).default('offline'),
 	DATABASE_URL: zod.string().min(1),
 	REDIS_URL: zod.url(),

@@ -11,7 +11,7 @@ COPY frontend/package.json frontend/package.json
 COPY contracts/package.json contracts/package.json
 RUN --mount=type=secret,id=proxy_ca \
     if [ -f /run/secrets/proxy_ca ]; then export NODE_EXTRA_CA_CERTS=/run/secrets/proxy_ca; fi; \
-    npm ci
+    npm ci --fetch-retries=0 --fetch-timeout=30000
 COPY backend backend
 COPY frontend frontend
 COPY contracts contracts

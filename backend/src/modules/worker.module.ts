@@ -1,10 +1,11 @@
+import { JobsModule } from '@app/modules/jobs/jobs.module';
+import { ProcessorService } from '@app/modules/jobs/services/processor.service';
 import { Module } from '@nestjs/common';
 import { InfrastructureModule } from '@app/shared/infrastructure/infrastructure.module';
 import { WorkerReadinessService } from '@app/modules/worker/worker-readiness.service';
 
-// Foundation process only; job processors are introduced in S02.
 @Module({
-	imports: [InfrastructureModule],
-	providers: [WorkerReadinessService],
+	imports: [InfrastructureModule, JobsModule],
+	providers: [WorkerReadinessService, ProcessorService],
 })
 export class WorkerModule {}

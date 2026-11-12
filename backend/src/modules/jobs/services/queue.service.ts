@@ -1,0 +1,96 @@
+import { Inject, Injectable } from '@nestjs/common';
+import type { OnModuleInit, OnApplicationShutdown } from '@nestjs/common';
+import { Queue } from 'bullmq';
+import { ConfigService } from '@app/shared/config/config.service';
+import { DatabaseService } from '@app/shared/database/database.service';
+
+@Injectable()
+export class QueueService implements OnModuleInit, OnApplicationShutdown {
+	readonly queue: Queue;
+	private timer?: ReturnType<typeof setInterval>;
+	constructor(
+		@Inject(ConfigService) configuration: ConfigService,
+		@Inject(DatabaseService) private readonly database: DatabaseService,
+	) {
+		this.queue = new Queue('workflow', {
+			connection: { url: configuration.get('REDIS_URL'), maxRetriesPerRequest: 1 },
+			prefix: configuration.get('REDIS_PREFIX') + 'jobs',
+			defaultJobOptions: { attempts: 1, removeOnComplete: 1000, removeOnFail: 1000 },
+		});
+		this.queue.on('error', () => {});
+	}
+
+	async enqueue(runId: string) {
+		try {
+			await this.queue.add('execute', { runId }, { jobId: runId });
+		} catch {
+			// An uncertain enqueue retains the durable command for reconciliation.
+			await this.database.client.jobRun.updateMany({
+				where: { id: runId, state: 'queued' },
+				data: { error: { code: 'ENQUEUE_PENDING' }, version: { increment: 1 } },
+			});
+		}
+	}
+
+	async reconcile() {
+		const db = this.database.client;
+		const queued = await db.jobRun.findMany({
+			where: { state: 'queued', createdAt: { lt: new Date(Date.now() - 30000) } },
+			select: { id: true },
+		});
+		for (const run of queued) {
+			await this.enqueue(run.id);
+		}
+		const interrupted = await db.jobRun.findMany({
+			where: {
+				state: 'running',
+				OR: [
+					{ heartbeatAt: { lt: new Date(Date.now() - 45000) } },
+					{ unitDeadlineAt: { lt: new Date() } },
+				],
+			},
+			select: { id: true, type: true },
+		});
+		for (const run of interrupted) {
+			const saved = await db.taskSnapshot.count({ where: { syncRunId: run.id } });
+			await db.$transaction(async (transaction) => {
+				await transaction.jobRun.updateMany({
+					where: {
+						id: run.id,
+						state: 'running',
+						OR: [
+							{ heartbeatAt: { lt: new Date(Date.now() - 45000) } },
+							{ unitDeadlineAt: { lt: new Date() } },
+						],
+					},
+					data: {
+						state: run.type === 'sync' && saved ? 'partial' : 'failed',
+						stage: 'finished',
+						finishedAt: new Date(),
+						error: { code: 'RUN_INTERRUPTED' },
+						version: { increment: 1 },
+					},
+				});
+				await transaction.modelAttempt.updateMany({
+					where: { runId: run.id, status: 'submitted' },
+					data: { status: 'interrupted', usageUnknown: true },
+				});
+			});
+		}
+	}
+
+	async onModuleInit() {
+		await this.reconcile().catch(() => {
+			// Readiness and endpoint errors report unavailable storage; recovery retries later.
+		});
+		this.timer = setInterval(() => {
+			void this.reconcile().catch(() => {});
+		}, 30000);
+		this.timer.unref();
+	}
+
+	async onApplicationShutdown() {
+		clearInterval(this.timer);
+		await this.queue.close();
+	}
+}
