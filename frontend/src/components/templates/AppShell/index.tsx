@@ -50,9 +50,7 @@ export function AppShell({ title, description, children }: IAppShellProps) {
 					<header className="space-y-4">
 						<div className="flex items-center gap-3">
 							<SidebarTrigger />
-							<span className="text-sm text-muted-foreground">
-								Foundation · {user.mode} mode
-							</span>
+							<span className="text-sm text-muted-foreground">{user.mode} mode</span>
 						</div>
 						<h1 className="text-[28px] leading-tight">{title}</h1>
 						<p className="text-sm text-muted-foreground">{description}</p>

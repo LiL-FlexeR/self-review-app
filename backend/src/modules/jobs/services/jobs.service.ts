@@ -13,7 +13,7 @@ import type { IJobScope, IJobRequest } from '@app/modules/jobs/jobs.interfaces';
 import type { JobRun, Prisma } from '@app/generated/prisma/client';
 import { DatabaseService } from '@app/shared/database/database.service';
 import { QueueService } from './queue.service.js';
-import { json } from '@app/modules/agent/agent.utils';
+import { json } from '@app/utils/json';
 import { AppLogger } from '@app/shared/logging/logger';
 
 const logger = new AppLogger('JobsService');
@@ -90,6 +90,7 @@ export class JobsService {
 			.object({
 				discoveryComplete: zod.boolean().optional(),
 				autoReview: zod.string().optional(),
+				warnings: zod.array(zod.string()).optional(),
 			})
 			.passthrough()
 			.parse(run.coverage);
@@ -111,7 +112,8 @@ export class JobsService {
 			resultRef: this.getResultReference(run),
 			currentReviewReportId: run.currentReviewReportId,
 			errorCode: error.success ? error.data.code : null,
-			warningsCount: run.state === 'partial' ? 1 : 0,
+			warningsCount: (coverage.warnings?.length ?? 0) + (run.state === 'partial' ? 1 : 0),
+			warnings: coverage.warnings ?? [],
 			autoReview: child?.state ?? coverage.autoReview ?? null,
 			reviewRunId: child?.id ?? null,
 			selection: run.selection,
@@ -241,6 +243,19 @@ export class JobsService {
 
 	private async acceptRun(request: IJobRequest): Promise<JobRun> {
 		return this.database.client.$transaction(async (transaction) => {
+			// Serialize job acceptance with confirmed connection deletion, before the project lock.
+			await transaction.$queryRaw`SELECT connections.id FROM connections JOIN source_projects ON source_projects.connection_id=connections.id WHERE source_projects.id=${request.projectId}::uuid AND connections.owner_id=${request.ownerId}::uuid FOR UPDATE OF connections`;
+			if (
+				!(await transaction.sourceProject.findFirst({
+					where: { id: request.projectId, connection: { ownerId: request.ownerId } },
+				}))
+			) {
+				throw new NotFoundException({
+					code: HTTP_ERROR_CODE.RESOURCE_NOT_FOUND,
+					message: HTTP_ERROR_MESSAGE.RESOURCE_NOT_FOUND,
+					retryable: false,
+				});
+			}
 			// Keep replay lookup and the activity-slot check under the same project lock.
 			await transaction.$queryRaw`SELECT id FROM source_projects WHERE id=${request.projectId}::uuid FOR UPDATE`;
 			const existing = await this.findRunByIdempotencyKey(transaction, request);

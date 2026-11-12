@@ -7,9 +7,9 @@ import { ReviewService } from '@app/modules/jobs/services/review.service';
 import { AgentService } from '@app/modules/agent/services/agent.service';
 import { SourcesService } from '@app/modules/agent/services/sources.service';
 import { ModelClient } from '@app/modules/agent/services/model-client.service';
-import { FixtureService } from '@app/modules/providers/fixture.service';
+import { ProvidersModule } from '@app/modules/providers/providers.module';
 @Module({
-	imports: [ConfigModule, InfrastructureModule],
+	imports: [ConfigModule, InfrastructureModule, ProvidersModule],
 	providers: [
 		QueueService,
 		JobsService,
@@ -17,7 +17,6 @@ import { FixtureService } from '@app/modules/providers/fixture.service';
 		AgentService,
 		SourcesService,
 		ModelClient,
-		FixtureService,
 	],
 	exports: [
 		QueueService,
@@ -26,7 +25,7 @@ import { FixtureService } from '@app/modules/providers/fixture.service';
 		AgentService,
 		SourcesService,
 		ModelClient,
-		FixtureService,
+		ProvidersModule,
 		ConfigModule,
 		InfrastructureModule,
 	],

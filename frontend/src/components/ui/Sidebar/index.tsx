@@ -159,6 +159,7 @@ function Sidebar({
 	collapsible?: 'offcanvas' | 'icon' | 'none';
 }) {
 	const { isMobile, state, openMobile, setOpenMobile } = useSidebar();
+	const mobileContent = React.useRef<HTMLDivElement>(null);
 
 	if (collapsible === 'none') {
 		return (
@@ -179,6 +180,7 @@ function Sidebar({
 		return (
 			<Sheet open={openMobile} onOpenChange={setOpenMobile} {...props}>
 				<SheetContent
+					ref={mobileContent}
 					data-sidebar="sidebar"
 					data-slot="sidebar"
 					data-mobile="true"
@@ -189,6 +191,14 @@ function Sidebar({
 						} as React.CSSProperties
 					}
 					side={side}
+					onOpenAutoFocus={(event) => {
+						const firstLink =
+							mobileContent.current?.querySelector<HTMLAnchorElement>('nav a[href]');
+						if (firstLink) {
+							event.preventDefault();
+							firstLink.focus();
+						}
+					}}
 				>
 					<SheetHeader className="sr-only">
 						<SheetTitle>Main navigation</SheetTitle>

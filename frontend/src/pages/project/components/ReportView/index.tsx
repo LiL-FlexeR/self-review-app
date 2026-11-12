@@ -55,25 +55,35 @@ export function ReportView({ id, userId }: { id: string; userId: string }) {
 									{claim.kind.replaceAll('_', ' ')}
 								</p>
 								<p>{claim.text}</p>
-								{claim.evidence.map((pair, pairIndex) => (
-									<details key={pairIndex} className="rounded-xl border p-3">
-										<summary className="cursor-pointer">
-											Saved source quotation
-										</summary>
-										<blockquote className="my-2 border-l pl-3">
-											{pair.quote}
-										</blockquote>
-										<p className="text-xs">{pair.sourceId}</p>
-										<p className="text-sm">
-											Retrieved:{' '}
-											{
-												saved.sources.find(
-													(source) => source.id === pair.sourceId,
-												)?.retrievedAt
-											}
-										</p>
-									</details>
-								))}
+								{claim.evidence.map((pair, pairIndex) => {
+									const source = saved.sources.find(
+										(item) => item.id === pair.sourceId,
+									);
+									return (
+										<details key={pairIndex} className="rounded-xl border p-3">
+											<summary className="cursor-pointer">
+												Saved source quotation
+											</summary>
+											<blockquote className="my-2 border-l pl-3">
+												{pair.quote}
+											</blockquote>
+											<p className="text-xs">{pair.sourceId}</p>
+											<p className="text-sm">
+												Retrieved: {source?.retrievedAt}
+											</p>
+											{source?.url && (
+												<a
+													href={source.url}
+													target="_blank"
+													rel="noreferrer"
+													className="text-sm underline"
+												>
+													Open tracker source
+												</a>
+											)}
+										</details>
+									);
+								})}
 							</div>
 						))}
 					</section>

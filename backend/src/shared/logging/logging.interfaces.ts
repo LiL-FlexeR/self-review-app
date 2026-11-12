@@ -4,6 +4,8 @@ export interface ILogContext {
 	requestId?: string;
 	runId?: string;
 	batchId?: string;
+	attempt?: number;
+	unitAttempt?: number;
 }
 
 export interface ILogFields extends ILogContext {
@@ -32,4 +34,26 @@ export interface ILogFields extends ILogContext {
 	quoteLength?: number;
 	sourceExcerptLength?: number;
 	quoteFoundIgnoringWhitespace?: boolean;
+	durationMs?: number;
+	batchLevel?: number;
+	phase?: string;
+	taskCount?: number;
+	sourceCount?: number;
+	claimCount?: number;
+	attemptLimit?: number;
+	requestBytes?: number;
+	outputBytes?: number;
+	historyItems?: number;
+	inputTokens?: number;
+	outputTokens?: number;
+	cachedInputTokens?: number;
+	reasoningTokens?: number;
+	usageKnown?: boolean;
+	corrected?: boolean;
+	cacheHit?: boolean;
+	retryDelayMs?: number;
+	providerStatus?: string;
+	incompleteReason?: string;
+	model?: string;
+	reasoningEffort?: string;
 }

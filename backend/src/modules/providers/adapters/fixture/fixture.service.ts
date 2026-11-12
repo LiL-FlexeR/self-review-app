@@ -1,14 +1,5 @@
 import { Injectable } from '@nestjs/common';
-
-export interface IProviderTask {
-	externalId: string;
-	identifier: string;
-	title: string;
-	description: string;
-	state: string;
-	assignees: string[];
-	createdAt: Date;
-}
+import type { IProviderTask } from '@app/modules/providers/provider.interfaces';
 
 @Injectable()
 export class FixtureService {

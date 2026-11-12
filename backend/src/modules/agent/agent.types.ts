@@ -34,6 +34,8 @@ export interface IModelResult {
 	output: OpenAI.Responses.ResponseOutputItem[];
 	text: string;
 	errorCode?: string;
+	providerStatus?: string;
+	incompleteReason?: string;
 	responseId: string | null;
 	usage: {
 		inputTokens: number;
@@ -51,11 +53,14 @@ export interface IUnitOptions {
 	research: boolean;
 	childClaims?: TClaim[];
 	report: boolean;
+	batchLevel?: number;
 }
 
 // One batch owns its mutable history and counters; this context stays in worker memory.
 export interface IUnitContext extends IUnitOptions {
 	deadline: number;
+	attemptNo: number;
+	unitAttempt: number;
 	history: OpenAI.Responses.ResponseInput;
 	exposed: Map<string, TSource>;
 	toolCount: number;

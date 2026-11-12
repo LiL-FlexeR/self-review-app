@@ -1,10 +1,10 @@
 import type { TClaim, TSource, TReportDraft } from '@self-review/contracts';
-import type { TAnalysis } from './agent.schemas.js';
-import type { Prisma } from '@app/generated/prisma/client';
+import type { TAnalysis } from '@app/modules/agent/agent.schemas';
 import { AppLogger } from '@app/shared/logging/logger';
 import type { ILogFields } from '@app/shared/logging/logging.interfaces';
-import { EvidenceValidationError } from './evidence-validation.error.js';
-import type { TEvidenceValidationReason } from './agent.types.js';
+import { EvidenceValidationError } from '@app/modules/agent/evidence-validation.error';
+import type { TEvidenceValidationReason } from '@app/modules/agent/agent.types';
+import { excerpt } from '@app/utils/excerpt';
 
 const logger = new AppLogger('AgentEvidence');
 
@@ -22,21 +22,6 @@ function rejectEvidence(
 		sourceKind: details.source?.kind,
 		sourceState: details.source?.state,
 	});
-}
-
-export function json(value: unknown): Prisma.InputJsonValue {
-	return JSON.parse(JSON.stringify(value)) as Prisma.InputJsonValue;
-}
-
-export function excerpt(text: string, bytes = 1024) {
-	let result = '';
-	for (const character of text.replace(/\r\n/g, '\n').replace(/\0/g, '')) {
-		if (Buffer.byteLength(result + character) > bytes) {
-			break;
-		}
-		result += character;
-	}
-	return result;
 }
 
 export function validateEvidence(

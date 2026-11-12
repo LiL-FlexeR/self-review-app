@@ -6,10 +6,11 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import { createTestApp } from './support/create-test-app.js';
 import type { IRuntime } from './support/create-test-app.js';
 import { config } from '@app/shared/config/config.schema';
-import { FixtureService } from '@app/modules/providers/fixture.service';
+import { FixtureService } from '@app/modules/providers/adapters/fixture/fixture.service';
 import { ProcessorService } from '@app/modules/jobs/services/processor.service';
 import { QueueService } from '@app/modules/jobs/services/queue.service';
 import { ModelClient } from '@app/modules/agent/services/model-client.service';
+import { reductionInput } from '@app/modules/agent/utils/reduction-model-draft';
 import { ReviewView, JobView } from '@self-review/contracts';
 const configuration = config();
 let runtime: IRuntime;
@@ -45,6 +46,7 @@ async function terminal(runId: string) {
 const period = { mode: 'period', startDate: '2026-10-01', endDate: '2026-10-31' };
 let sampleId: string;
 let sampleReportId: string;
+let largeSampleId: string;
 beforeAll(async () => {
 	if (
 		!configuration.DATABASE_URL.endsWith('/self_review_test') ||
@@ -153,6 +155,7 @@ it('imports 137 tasks across pages, covers every leaf and reduces the last batch
 	const sync = await terminal(accepted.body.runId);
 	expect(sync.state).toBe('succeeded');
 	expect(sync.counts.saved).toBe(137);
+	largeSampleId = sync.runId;
 	const leaves = await runtime.db.analysisBatch.findMany({
 		where: { runId: sync.runId, level: 0 },
 	});
@@ -168,6 +171,147 @@ it('imports 137 tasks across pages, covers every leaf and reduces the last batch
 	const units = await runtime.db.analysisBatch.findMany({ where: { runId: review.runId } });
 	expect(units.filter((batch) => batch.level === 0)).toHaveLength(14);
 	expect(units.every((batch) => batch.state === 'succeeded')).toBe(true);
+}, 30000);
+
+it('rejects invalid reducer references after one correction and preserves the current report', async () => {
+	const project = projects.find((item) => item.externalId === 'demo-137')!;
+	const before = await runtime.db.jobRun.findUniqueOrThrow({ where: { id: largeSampleId } });
+	const model = runtime.app.get(ModelClient);
+	const original = model.respond.bind(model);
+	let reducerCalls = 0;
+	model.respond = async (input) => {
+		if (!input.childClaims) {
+			return original(input);
+		}
+		reducerCalls++;
+		const first = input.history[0];
+		expect(first).toHaveProperty('role', 'user');
+		if (!first || !('content' in first) || typeof first.content !== 'string') {
+			throw new Error('Missing reducer input');
+		}
+		const supplied = JSON.parse(first.content);
+		expect(supplied.childClaims).toEqual(
+			reductionInput(input.childClaims, input.sources).childClaims,
+		);
+		expect(supplied.evidenceRegistry).toEqual(
+			reductionInput(input.childClaims, input.sources).evidenceRegistry,
+		);
+		return {
+			output: [],
+			responseId: null,
+			usage: null,
+			text: JSON.stringify({
+				schemaVersion: '1.0',
+				groupTitles: ['Area', '', '', ''],
+				claims: [
+					{
+						kind: 'task_description',
+						text: 'Synthetic plan',
+						groupIndex: 0,
+						evidenceRefs: [99999],
+					},
+				],
+				limitations: [],
+				explanation: 'Invalid synthetic selection.',
+			}),
+		};
+	};
+	try {
+		const accepted = await post(`/projects/${project.id}/reviews`, {
+			syncRunId: largeSampleId,
+			idempotencyKey: randomUUID(),
+		});
+		const review = await terminal(accepted.body.runId);
+		expect(review.state).toBe('failed');
+		expect(review.errorCode).toBe('INVALID_MODEL_OUTPUT');
+		expect(reducerCalls).toBe(2);
+		const after = await runtime.db.jobRun.findUniqueOrThrow({ where: { id: largeSampleId } });
+		expect(after.currentReviewReportId).toBe(before.currentReviewReportId);
+		const failed = await runtime.db.analysisBatch.findFirstOrThrow({
+			where: { runId: review.runId, state: 'failed' },
+		});
+		expect(JSON.stringify(failed.trace)).toContain('evidenceRefs');
+		expect(await runtime.db.reviewReport.count({ where: { reviewRunId: review.runId } })).toBe(
+			0,
+		);
+	} finally {
+		model.respond = original;
+	}
+}, 30000);
+
+it('merges validated empty sync/review children with full coverage and no reducer model requests', async () => {
+	const project = projects.find((item) => item.externalId === 'demo-137')!;
+	const model = runtime.app.get(ModelClient);
+	const original = model.respond.bind(model);
+	let reducerCalls = 0;
+	let reviewCalls = 0;
+	model.respond = async (input) => {
+		if (input.childClaims) {
+			reducerCalls++;
+			throw new Error('Empty children must not trigger a model request');
+		}
+		if (input.forcedTool) {
+			return original(input);
+		}
+		if (input.report) {
+			reviewCalls++;
+		}
+		return {
+			output: [],
+			responseId: null,
+			usage: null,
+			text: JSON.stringify({
+				schemaVersion: '1.0',
+				...(input.report
+					? { groupTitles: ['', '', '', ''], claims: [] }
+					: { findings: [] }),
+				limitations: ['Synthetic evidence does not establish an outcome.'],
+				explanation: 'No supported claims.',
+			}),
+		};
+	};
+	try {
+		const accepted = await post(`/projects/${project.id}/syncs`, {
+			selection: period,
+			generateReview: true,
+			idempotencyKey: randomUUID(),
+		});
+		const sync = await terminal(accepted.body.runId);
+		expect(sync.state).toBe('succeeded');
+		expect(sync.counts.saved).toBe(137);
+		const review = await terminal(sync.reviewRunId!);
+		expect(review.state).toBe('succeeded');
+		expect(reducerCalls).toBe(0);
+		expect(reviewCalls).toBe(14);
+		for (const runId of [sync.runId, review.runId]) {
+			const batches = await runtime.db.analysisBatch.findMany({ where: { runId } });
+			expect(batches).toHaveLength(19);
+			expect(batches.every((batch) => batch.state === 'succeeded')).toBe(true);
+			expect(
+				new Set(
+					batches
+						.filter((batch) => batch.level === 0)
+						.flatMap((batch) => batch.inputIds as string[]),
+				).size,
+			).toBe(137);
+			expect(
+				batches
+					.filter((batch) => batch.level > 0)
+					.every((batch) => JSON.stringify(batch.trace).includes('empty_reduction')),
+			).toBe(true);
+		}
+		const source = await runtime.db.jobRun.findUniqueOrThrow({
+			where: { id: sync.runId },
+			include: { currentReviewReport: true },
+		});
+		expect(source.currentReviewReport).not.toBeNull();
+		expect(
+			ReviewView.parse((await get(`/reviews/${source.currentReviewReportId}`)).body).draft
+				.groups,
+		).toEqual([]);
+	} finally {
+		model.respond = original;
+	}
 }, 30000);
 
 it('refreshes only selected source IDs and copies immutable provenance', async () => {
@@ -856,4 +1000,178 @@ it('rolls back sync publication when automatic-review insertion fails', async ()
 		await runtime.db.$executeRawUnsafe('DROP TRIGGER s02_reject_auto_review ON job_runs');
 		await runtime.db.$executeRawUnsafe('DROP FUNCTION s02_reject_auto_review()');
 	}
+});
+
+it('persists a model-started checkpoint while the external request is still pending', async () => {
+	const project = projects.find((item) => item.externalId === 'demo-evidence')!;
+	const model = runtime.app.get(ModelClient);
+	const original = model.respond.bind(model);
+	let release: () => void = () => undefined;
+	let entered = false;
+	const gate = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	model.respond = async (input) => {
+		if (!entered) {
+			entered = true;
+			await gate;
+		}
+		return original(input);
+	};
+	try {
+		const accepted = await post(`/projects/${project.id}/syncs`, {
+			selection: period,
+			idempotencyKey: randomUUID(),
+		});
+		expect(accepted.status).toBe(202);
+		for (let iteration = 0; iteration < 100 && !entered; iteration++) {
+			await new Promise((resolve) => setTimeout(resolve, 20));
+		}
+		expect(entered).toBe(true);
+		const batch = await runtime.db.analysisBatch.findFirstOrThrow({
+			where: { runId: accepted.body.runId },
+		});
+		expect(batch.state).toBe('running');
+		expect(batch.trace).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({ event: 'unit_started', phase: 'sync', taskCount: 1 }),
+				expect.objectContaining({ event: 'model_started', attempt: 1, unitAttempt: 1 }),
+			]),
+		);
+		expect(JSON.stringify(batch.trace)).not.toContain('model_completed');
+		release();
+		expect((await terminal(accepted.body.runId)).state).toBe('succeeded');
+	} finally {
+		release();
+		model.respond = original;
+	}
+});
+
+it('persists the exact schema constraint on correction and final review failure', async () => {
+	const project = projects.find((item) => item.externalId === 'demo-evidence')!;
+	const sync = await post(`/projects/${project.id}/syncs`, {
+		selection: period,
+		idempotencyKey: randomUUID(),
+	});
+	expect((await terminal(sync.body.runId)).state).toBe('succeeded');
+	const model = runtime.app.get(ModelClient);
+	const original = model.respond.bind(model);
+	let requests = 0;
+	let correction = '';
+	model.respond = async (input) => {
+		if (!input.report) {
+			return original(input);
+		}
+		requests++;
+		if (requests === 2) {
+			correction = JSON.stringify(input.history);
+		}
+		const source = input.sources[0]!;
+		const claim = {
+			kind: 'task_description',
+			text: 'Synthetic plan',
+			evidence: [{ sourceId: source.id, quote: source.textExcerpt.slice(0, 40) }],
+		};
+		return {
+			output: [],
+			responseId: null,
+			usage: null,
+			text: JSON.stringify({
+				schemaVersion: '1.0',
+				groupTitles: ['First', 'Second', '', ''],
+				claims: Array.from({ length: 10 }, (_value, index) => ({
+					...claim,
+					groupIndex: index % 2,
+				})),
+				limitations: [],
+				explanation: 'Synthetic constraint failure',
+			}),
+		};
+	};
+	try {
+		const accepted = await post(`/projects/${project.id}/reviews`, {
+			syncRunId: sync.body.runId,
+			idempotencyKey: randomUUID(),
+		});
+		const failed = await terminal(accepted.body.runId);
+		expect(failed).toMatchObject({ state: 'failed', errorCode: 'INVALID_MODEL_OUTPUT' });
+		expect(requests).toBe(2);
+		expect(correction).toContain('maximum');
+		const batch = await runtime.db.analysisBatch.findFirstOrThrow({
+			where: { runId: accepted.body.runId },
+		});
+		expect(batch.trace).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					event: 'validation_failed',
+					error: expect.objectContaining({
+						issues: expect.arrayContaining([
+							expect.objectContaining({
+								code: 'too_big',
+								path: 'claims',
+								maximum: 8,
+							}),
+						]),
+					}),
+				}),
+				expect.objectContaining({ event: 'output_correction_requested' }),
+			]),
+		);
+		expect(await runtime.db.reviewReport.count({ where: { reviewRunId: failed.runId } })).toBe(
+			0,
+		);
+	} finally {
+		model.respond = original;
+	}
+});
+
+it('finalizes unfinished batch traces when recovering a lost worker heartbeat', async () => {
+	const base = await runtime.db.jobRun.findUniqueOrThrow({ where: { id: sampleId } });
+	const run = await runtime.db.jobRun.create({
+		data: {
+			ownerId: base.ownerId,
+			projectId: base.projectId,
+			type: 'review',
+			selection: base.selection!,
+			subjectSourceUserId: base.subjectSourceUserId,
+			sourceSyncRunId: base.id,
+			idempotencyKey: randomUUID(),
+			requestFingerprint: 'synthetic-trace-recovery',
+			state: 'running',
+			heartbeatAt: new Date(),
+			unitDeadlineAt: new Date(Date.now() + 300000),
+		},
+	});
+	const batch = await runtime.db.analysisBatch.create({
+		data: {
+			runId: run.id,
+			phase: 'review',
+			ordinal: 0,
+			inputIds: [],
+			state: 'running',
+			trace: [{ event: 'model_started', attempt: 1 }],
+		},
+	});
+	await runtime.db.modelAttempt.create({
+		data: { runId: run.id, batchId: batch.id, attemptNo: 1, status: 'submitted' },
+	});
+	await runtime.db.jobRun.update({
+		where: { id: run.id },
+		data: { heartbeatAt: new Date(Date.now() - 60000) },
+	});
+	await runtime.app.get(QueueService).reconcile();
+	expect((await runtime.db.jobRun.findUniqueOrThrow({ where: { id: run.id } })).state).toBe(
+		'failed',
+	);
+	const recovered = await runtime.db.analysisBatch.findUniqueOrThrow({ where: { id: batch.id } });
+	expect(recovered.state).toBe('failed');
+	expect(recovered.trace).toEqual(
+		expect.arrayContaining([
+			expect.objectContaining({ event: 'model_started' }),
+			expect.objectContaining({ event: 'unit_interrupted', errorCode: 'RUN_INTERRUPTED' }),
+		]),
+	);
+	expect(
+		await runtime.db.modelAttempt.findFirstOrThrow({ where: { runId: run.id } }),
+	).toMatchObject({ status: 'interrupted', usageUnknown: true });
 });

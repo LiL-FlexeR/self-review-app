@@ -2,7 +2,7 @@
 
 A web application for preparing developer self-reviews from Linear, ClickUp, and Jira Cloud tasks. Users connect task sources, synchronize a project, inspect saved tasks, and create a report with quotations and source references.
 
-The available local workflow uses synthetic tracker data with scripted offline output or the configured OpenAI client. Real tracker adapters and live-model/browser acceptance are tracked in the [ROADMAP](ROADMAP.md).
+The local workflow supports synthetic tracker data in offline/demo modes and a Linear personal-key connection in live mode. Adapter acceptance, live-model verification, and remaining browser checks are tracked in the [ROADMAP](ROADMAP.md).
 
 ## Problem and users
 
@@ -70,7 +70,9 @@ Runtime modes:
 | --- | --- | --- |
 | offline — default | Synthetic source and scripted model; the entire auth/DB/queue/SSE workflow is real | None |
 | demo | Synthetic source + real OpenAI | OPENAI_API_KEY on the worker |
-| live — future S03/S04 adapters | Linear, ClickUp, Jira Cloud + OpenAI; fixture creation is rejected | OpenAI on the worker; tracker tokens will be entered in the UI |
+| live | Linear + OpenAI; fixture creation is rejected. ClickUp/Jira are not available yet | OpenAI on the worker; Linear personal Read key entered in the UI |
+
+For Linear, set `APP_MODE=live` and `OPENAI_API_KEY` in the server `.env`, then rebuild/recreate API and worker. After password + OTP, open Connections, enter a connection name and a personal Read key, and choose **Verify and save**. Browse Projects and use **Load more projects** to reach later catalog pages, including accessible archived projects. Sync uses UTC task creation dates, every status and assignee; review uses only tasks assigned to the verified token owner. Replace a key only for the same Linear user and workspace. Confirmed connection deletion removes its local projects, snapshots and reports and is blocked while a job is active; it does not revoke the key in Linear. Never paste keys into chat or commit private tickets.
 
 Every mode requires email + password + OTP. Offline uses the same authentication/storage/queue path and clearly labels its scripted model. Full [configuration](docs/architecture/overview.md#modes-and-configuration) and [authentication and secret-handling rules](docs/decisions/D04-auth-and-credentials.md).
 
@@ -94,7 +96,7 @@ API and worker write Winston JSON logs. Read them with:
 docker compose logs -f api worker
 ```
 
-Set `LOG_LEVEL=info` (default), `warn`, `error`, or `debug` in the server `.env` and recreate API/worker to apply it. HTTP error logs share the response's `X-Request-Id`/`requestId`; worker/agent logs carry `runId`/`batchId`. An `evidence_validation_failed` event identifies the reason (for example `QUOTE_NOT_FOUND`) and includes the rejected claim/evidence, compared source excerpt, and comparison details. These server diagnostics contain task/result text with credential redaction. The public safe execution trace remains compact. Full behavior and boundaries: [server logging](docs/architecture/overview.md#server-logging).
+Set `LOG_LEVEL=info` (default), `warn`, `error`, or `debug` in the server `.env` and recreate API/worker to apply it. HTTP error logs share the response's `X-Request-Id`/`requestId`; worker/agent logs carry `runId`/`batchId`. An `evidence_validation_failed` event identifies the reason (for example `QUOTE_NOT_FOUND`) and includes the rejected claim/evidence, compared source excerpt, and comparison details. These server diagnostics contain task/result text with credential redaction. The public safe execution trace remains compact. Follow execution with `docker compose logs -f worker`: `model_request_started/completed/failed`, `tool_started/completed/failed`, `validation_failed`, `output_correction_requested` and terminal events share run/batch/attempt identifiers. Request/output byte counts, durations, usage and schema issue paths identify the boundary that failed. The owner trace is checkpointed while work runs and survives interruption; full prompts/model output and hidden reasoning are excluded. Full behavior and boundaries: [server logging](docs/architecture/overview.md#server-logging).
 
 ## Verification
 
@@ -108,7 +110,7 @@ npm run test:integration
 npm run build
 ```
 
-Tests cover authentication, storage constraints, real BullMQ/Postgres/Redis execution, the 6/137-task cases, source validation, automatic/manual review, report rollback, selective refresh, ownership, enqueue-gap recovery, SSE disconnect/API restart, and client recovery. Integration substitutes SMTP and the external model/source boundaries. SDK tests use a synthetic HTTP transport and do not prove live OpenAI access. See [actual stage verification](ROADMAP.md).
+Tests cover authentication, storage constraints, real BullMQ/Postgres/Redis execution, the 6/137-task cases, source validation, automatic/manual review, report rollback, selective refresh, ownership, enqueue-gap recovery, SSE disconnect/API restart, and client recovery. Integration substitutes SMTP and the external model/source boundaries. Linear transport tests cover paginated catalogs/imports, exact UTC boundaries, all statuses/assignees, scoped selected refresh, identity replacement, encrypted credentials, GraphQL HTTP 200 errors, and byte/time budgets. SDK tests use a synthetic HTTP transport and do not prove live OpenAI access. See [actual stage verification](ROADMAP.md).
 
 Manual S01 check: signup → Mailpit → OTP → protected shell → open a second tab → sign out → confirm both tabs clear the account → sign in with password and a fresh OTP. Reload `/connections` or `/projects`; missing `/api` and asset paths retain 404 responses. Authentication expiry and competing refreshes are covered with a controlled test clock and real storage.
 

@@ -4,8 +4,9 @@ import { Worker } from 'bullmq';
 import { z as zod } from 'zod';
 import { SyncCommand } from '@self-review/contracts';
 import type { TSyncCommand } from '@self-review/contracts';
-import { aggregateUsage } from '@app/modules/agent/agent.usage';
-import { excerpt, json } from '@app/modules/agent/agent.utils';
+import { aggregateUsage } from '@app/modules/agent/utils/usage';
+import { excerpt } from '@app/utils/excerpt';
+import { json } from '@app/utils/json';
 import { Analysis, LIMITS } from '@app/modules/agent/agent.schemas';
 import type { TAnalysis } from '@app/modules/agent/agent.schemas';
 import { inRunningRun } from '@app/modules/jobs/running-transaction';
@@ -16,8 +17,9 @@ import type {
 } from '@app/modules/jobs/jobs.interfaces';
 import { DatabaseService } from '@app/shared/database/database.service';
 import { ConfigService } from '@app/shared/config/config.service';
-import { FixtureService } from '@app/modules/providers/fixture.service';
-import type { IProviderTask } from '@app/modules/providers/fixture.service';
+import { ProvidersService } from '@app/modules/providers/providers.service';
+import type { IProviderTask, ITaskProvider } from '@app/modules/providers/provider.interfaces';
+import { ProviderError, PROVIDER_ERROR_CODES } from '@app/errors/provider.error';
 import { AgentService } from '@app/modules/agent/services/agent.service';
 import { QueueService } from './queue.service.js';
 import { ReviewService } from './review.service.js';
@@ -34,7 +36,7 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 	constructor(
 		@Inject(DatabaseService) private readonly database: DatabaseService,
 		@Inject(ConfigService) private readonly configuration: ConfigService,
-		@Inject(FixtureService) private readonly provider: FixtureService,
+		@Inject(ProvidersService) private readonly providers: ProvidersService,
 		@Inject(AgentService) private readonly agent: AgentService,
 		@Inject(QueueService) private readonly queue: QueueService,
 		@Inject(ReviewService) private readonly review: ReviewService,
@@ -80,6 +82,7 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 			const run = await this.database.client.jobRun.findUniqueOrThrow({
 				where: { id: runId },
 			});
+			logger.info('run_started', { stage: run.stage, state: run.state });
 			if (run.type === 'review') {
 				await this.review.execute(runId);
 			} else {
@@ -155,6 +158,12 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 	}
 
 	private getFailureCode(error: unknown): string {
+		if (
+			error instanceof ProviderError ||
+			(error instanceof Error && PROVIDER_ERROR_CODES.has(error.message))
+		) {
+			return error.message;
+		}
 		const safeCodes = [
 			'INVALID_MODEL_OUTPUT',
 			'GUARDRAIL_VIOLATION',
@@ -178,7 +187,13 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 			where: { id: runId },
 			select: { id: true, type: true, state: true, stage: true, error: true, usage: true },
 		});
-		logger.info('run_terminal', { runId, state: terminal?.state, stage: terminal?.stage });
+		const error = zod.object({ code: zod.string() }).safeParse(terminal?.error);
+		logger.info('run_terminal', {
+			runId,
+			state: terminal?.state,
+			stage: terminal?.stage,
+			reason: error.success ? error.data.code : undefined,
+		});
 	}
 
 	private async beginUnit(runId: string, stage: string): Promise<void> {
@@ -197,6 +212,7 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 	}
 
 	private async sync(run: JobRun): Promise<void> {
+		const provider = await this.providers.forRun(run.id);
 		const project = await this.database.client.sourceProject.findUniqueOrThrow({
 			where: { id: run.projectId },
 		});
@@ -206,8 +222,8 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 		});
 		const coverage =
 			selection.mode === 'period'
-				? await this.importPeriodTasks(run.id, project.externalId, selection)
-				: await this.importSelectedTasks(run.id, project.externalId, selection);
+				? await this.importPeriodTasks(provider, run.id, project.externalId, selection)
+				: await this.importSelectedTasks(provider, run.id, project.externalId, selection);
 		const importComplete = await this.saveImportCoverage(run.id, coverage);
 		const analysis = Analysis.parse(await this.agent.run(run.id, run.id, false));
 
@@ -215,39 +231,53 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 	}
 
 	private async importPeriodTasks(
+		provider: ITaskProvider,
 		runId: string,
 		externalProjectId: string,
 		selection: Extract<TSyncCommand['selection'], { mode: 'period' }>,
 	): Promise<IImportCoverage> {
-		await this.discoverPeriodTasks(runId, externalProjectId, selection);
-		const refreshFailed = await this.readTaskDetails(runId, externalProjectId);
+		await this.discoverPeriodTasks(provider, runId, externalProjectId, selection);
+		const refreshFailed = await this.readTaskDetails(provider, runId, externalProjectId);
 
 		return { discoveryComplete: true, refreshFailed };
 	}
 
 	private async discoverPeriodTasks(
+		provider: ITaskProvider,
 		runId: string,
 		externalProjectId: string,
 		selection: Extract<TSyncCommand['selection'], { mode: 'period' }>,
 	): Promise<void> {
-		let cursor: number | null = 0;
-		const seen = new Set<number>();
+		let cursor: string | null = null;
+		const seen = new Set<string | null>();
+		const seenExternalIds = new Set<string>();
+		let isFirstPage = true;
 		const start = new Date(selection.startDate + 'T00:00:00Z');
 		const end = new Date(new Date(selection.endDate + 'T00:00:00Z').getTime() + 86400000);
 
-		while (cursor !== null) {
+		while (isFirstPage || cursor !== null) {
+			isFirstPage = false;
 			await this.beginUnit(runId, 'listing');
 			if (seen.has(cursor)) {
 				logger.error('operation_rejected', { reason: 'PAGINATION_LOOP' });
 				throw new Error('PAGINATION_LOOP');
 			}
 			seen.add(cursor);
-			const page = await this.provider.list(externalProjectId, cursor);
+			const page = await provider.list(externalProjectId, cursor, start, end);
+			let newCandidates = 0;
 			for (const item of page.items) {
+				if (!seenExternalIds.has(item.externalId)) {
+					newCandidates++;
+					seenExternalIds.add(item.externalId);
+				}
 				if (item.createdAt < start || item.createdAt >= end) {
 					continue;
 				}
 				await this.saveDiscoveredTask(runId, item);
+			}
+			// Empty eligible pages can contain out-of-period broad-filter candidates.
+			if (page.nextCursor !== null && newCandidates === 0) {
+				throw new ProviderError('PAGINATION_LOOP');
 			}
 			cursor = page.nextCursor;
 		}
@@ -270,6 +300,8 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 					state: item.state,
 					assignees: item.assignees,
 					sourceCreatedAt: item.createdAt,
+					sourceUpdatedAt: item.updatedAt,
+					safeUrl: item.safeUrl,
 					retrievedAt: new Date(),
 					detailStatus: 'pending',
 					refreshStatus: 'fresh',
@@ -279,7 +311,11 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 		);
 	}
 
-	private async readTaskDetails(runId: string, externalProjectId: string): Promise<boolean> {
+	private async readTaskDetails(
+		provider: ITaskProvider,
+		runId: string,
+		externalProjectId: string,
+	): Promise<boolean> {
 		let cursor: string | undefined;
 		let refreshFailed = false;
 
@@ -295,7 +331,12 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 			cursor = tasks.at(-1)!.id;
 			await this.beginUnit(runId, 'reading');
 			for (const task of tasks) {
-				const succeeded = await this.readTaskDetail(runId, externalProjectId, task);
+				const succeeded = await this.readTaskDetail(
+					provider,
+					runId,
+					externalProjectId,
+					task,
+				);
 				if (!succeeded) {
 					refreshFailed = true;
 				}
@@ -306,20 +347,52 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 	}
 
 	private async readTaskDetail(
+		provider: ITaskProvider,
 		runId: string,
 		externalProjectId: string,
 		task: TaskSnapshot,
 	): Promise<boolean> {
 		const db = this.database.client;
 		try {
-			const details = await this.provider.details(externalProjectId, task.externalId);
+			const details = await provider.details(externalProjectId, task.externalId);
+			if (details.createdAt.getTime() !== task.sourceCreatedAt.getTime()) {
+				throw new ProviderError('PROVIDER_SCOPE_CHANGED');
+			}
+			if (
+				task.sourceUpdatedAt &&
+				details.updatedAt &&
+				task.sourceUpdatedAt.getTime() !== details.updatedAt.getTime()
+			) {
+				await this.sourceNotice(
+					runId,
+					'The source changed during import; the saved data is not a transactional tracker snapshot.',
+				);
+			}
+			if (
+				details.hasTruncatedFields ||
+				Buffer.byteLength(details.description) > LIMITS.sourceFieldBytes
+			) {
+				await this.sourceNotice(
+					runId,
+					'A source field was truncated; import coverage is incomplete.',
+					'PROVIDER_FIELD_LIMIT',
+				);
+			}
 			await inRunningRun(db, runId, (transaction) =>
 				transaction.taskSnapshot.update({
 					where: { id: task.id },
 					data: {
-						description: excerpt(details.description, 65536),
+						title: details.title,
+						identifier: details.identifier,
+						state: details.state,
+						assignees: details.assignees,
+						sourceCreatedAt: details.createdAt,
+						sourceUpdatedAt: details.updatedAt,
+						safeUrl: details.safeUrl,
+						description: excerpt(details.description, LIMITS.sourceFieldBytes),
 						detailStatus:
-							Buffer.byteLength(details.description) > 65536
+							details.hasTruncatedFields ||
+							Buffer.byteLength(details.description) > LIMITS.sourceFieldBytes
 								? 'truncated'
 								: 'available',
 						retrievedAt: new Date(),
@@ -329,6 +402,11 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 			return true;
 		} catch (error) {
 			logger.error('task_detail_failed', { error, runId, taskId: task.id });
+			await this.sourceNotice(
+				runId,
+				'A requested task could not be read; import coverage is incomplete.',
+				this.getFailureCode(error),
+			);
 			await inRunningRun(db, runId, (transaction) =>
 				transaction.taskSnapshot.update({
 					where: { id: task.id },
@@ -340,6 +418,7 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 	}
 
 	private async importSelectedTasks(
+		provider: ITaskProvider,
 		runId: string,
 		externalProjectId: string,
 		selection: Extract<TSyncCommand['selection'], { mode: 'tasks' }>,
@@ -366,6 +445,7 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 			await this.beginUnit(runId, 'reading');
 			for (const task of tasks) {
 				const refresh = await this.readSelectedTask(
+					provider,
 					externalProjectId,
 					task,
 					selection.taskIds.includes(task.id),
@@ -373,6 +453,11 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 				await this.copyTaskSnapshot(runId, task, refresh);
 				if (refresh.refreshFailed) {
 					refreshFailed = true;
+					await this.sourceNotice(
+						runId,
+						'A selected task could not be refreshed. Its previous data is retained as stale.',
+						refresh.errorCode,
+					);
 				}
 			}
 		}
@@ -381,6 +466,7 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 	}
 
 	private async readSelectedTask(
+		provider: ITaskProvider,
 		externalProjectId: string,
 		task: TaskSnapshot,
 		shouldRefresh: boolean,
@@ -392,12 +478,40 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 			};
 		}
 		try {
-			const details = await this.provider.details(externalProjectId, task.externalId);
+			const details = await provider.details(externalProjectId, task.externalId);
+			if (details.createdAt.getTime() !== task.sourceCreatedAt.getTime()) {
+				throw new ProviderError('PROVIDER_SCOPE_CHANGED');
+			}
 			return { refreshStatus: 'fresh', details, refreshFailed: false };
 		} catch (error) {
 			logger.error('selected_task_refresh_failed', { error, taskId: task.id });
-			return { refreshStatus: 'stale', refreshFailed: true };
+			return {
+				refreshStatus: 'stale',
+				refreshFailed: true,
+				errorCode: this.getFailureCode(error),
+			};
 		}
+	}
+
+	private async sourceNotice(runId: string, warning: string, errorCode?: string) {
+		await inRunningRun(this.database.client, runId, async (transaction) => {
+			const run = await transaction.jobRun.findUniqueOrThrow({ where: { id: runId } });
+			const coverage = zod
+				.object({ warnings: zod.array(zod.string()).default([]) })
+				.passthrough()
+				.parse(run.coverage);
+			await transaction.jobRun.update({
+				where: { id: runId },
+				data: {
+					coverage: json({
+						...coverage,
+						warnings: [...new Set([...coverage.warnings, warning])],
+					}),
+					...(errorCode ? { error: { code: errorCode } } : {}),
+					version: { increment: 1 },
+				},
+			});
+		});
 	}
 
 	private async copyTaskSnapshot(
@@ -420,12 +534,17 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 					...(details
 						? {
 								title: details.title,
-								description: excerpt(details.description, 65536),
+								identifier: details.identifier,
+								sourceCreatedAt: details.createdAt,
+								sourceUpdatedAt: details.updatedAt,
+								safeUrl: details.safeUrl,
+								description: excerpt(details.description, LIMITS.sourceFieldBytes),
 								state: details.state,
 								assignees: details.assignees,
 								retrievedAt: new Date(),
 								detailStatus:
-									Buffer.byteLength(details.description) > 65536
+									details.hasTruncatedFields ||
+									Buffer.byteLength(details.description) > LIMITS.sourceFieldBytes
 										? 'truncated'
 										: 'available',
 								commentReadState: 'not_read',
@@ -457,6 +576,15 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 
 	private async saveImportCoverage(runId: string, coverage: IImportCoverage): Promise<boolean> {
 		const db = this.database.client;
+		if (
+			await db.taskSnapshot.count({ where: { syncRunId: runId, detailStatus: 'truncated' } })
+		) {
+			await this.sourceNotice(
+				runId,
+				'A source field was truncated; import coverage is incomplete.',
+				'PROVIDER_FIELD_LIMIT',
+			);
+		}
 		const missing = await db.taskSnapshot.count({
 			where: {
 				syncRunId: runId,
@@ -471,16 +599,25 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 			where: { syncRunId: runId, detailStatus: 'available' },
 		});
 		if (!available && (await db.taskSnapshot.count({ where: { syncRunId: runId } }))) {
+			const current = await db.jobRun.findUniqueOrThrow({ where: { id: runId } });
+			const cause = zod.object({ code: zod.string() }).safeParse(current.error);
+			if (cause.success && PROVIDER_ERROR_CODES.has(cause.data.code)) {
+				throw new Error(cause.data.code);
+			}
 			logger.error('operation_rejected', { reason: 'INSUFFICIENT_DATA' });
 			throw new Error('INSUFFICIENT_DATA');
 		}
 		const importComplete =
 			coverage.discoveryComplete && !coverage.refreshFailed && missing === 0;
+		const current = await db.jobRun.findUniqueOrThrow({ where: { id: runId } });
 		await db.jobRun.updateMany({
 			where: { id: runId, state: 'running' },
 			data: {
 				importComplete,
-				coverage: { discoveryComplete: coverage.discoveryComplete },
+				coverage: json({
+					...zod.record(zod.string(), zod.unknown()).parse(current.coverage),
+					discoveryComplete: coverage.discoveryComplete,
+				}),
 				version: { increment: 1 },
 			},
 		});
@@ -525,6 +662,7 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 		}
 
 		return this.database.client.$transaction(async (transaction) => {
+			const current = await transaction.jobRun.findUniqueOrThrow({ where: { id: run.id } });
 			const finalized = await transaction.jobRun.updateMany({
 				where: { id: run.id, state: 'running' },
 				data: {
@@ -532,7 +670,11 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 					stage: 'finished',
 					finishedAt: new Date(),
 					analysisComplete: true,
-					coverage: { discoveryComplete: result.discoveryComplete, autoReview },
+					coverage: json({
+						...zod.record(zod.string(), zod.unknown()).parse(current.coverage),
+						discoveryComplete: result.discoveryComplete,
+						autoReview,
+					}),
 					usage: result.usage,
 					version: { increment: 1 },
 				},

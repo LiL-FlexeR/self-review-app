@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto';
 import { once } from 'node:events';
 import { PassThrough } from 'node:stream';
 import { UnauthorizedException } from '@nestjs/common';
-import { HTTP_ERROR_CODE } from '@self-review/contracts';
+import { HTTP_ERROR_CODE, ReportDraft } from '@self-review/contracts';
 import type { TClaim, TSource } from '@self-review/contracts';
 import winston from 'winston';
 import { z as zod } from 'zod';
@@ -13,7 +13,7 @@ import {
 	getLogContext,
 	withLogContext,
 } from '@app/shared/logging/logger';
-import { safeError } from '@app/shared/logging/logging.utils';
+import { safeError, safeLogFields } from '@app/shared/logging/logging.utils';
 import { diagnosticText } from '@app/shared/logging/logging-diagnostics';
 import { nestLogger } from '@app/shared/logging/nest-logger';
 
@@ -258,5 +258,58 @@ describe('safe Winston output', () => {
 		} finally {
 			vi.unstubAllEnvs();
 		}
+	});
+});
+
+it('logs only bounded agent progress metadata and concrete aggregate schema constraints', () => {
+	const secret = 'private-synthetic-prompt-or-key';
+	const fields = {
+		attempt: 2,
+		phase: 'review-reduce',
+		batchLevel: 1,
+		durationMs: 125,
+		requestBytes: 2000,
+		sourceCount: 12,
+		inputTokens: 100,
+		outputTokens: 50,
+		usageKnown: true,
+		providerStatus: 'incomplete',
+		incompleteReason: 'max_output_tokens',
+		prompt: secret,
+		output: secret,
+	};
+	expect(safeLogFields(fields)).toMatchObject({
+		attempt: 2,
+		phase: 'review-reduce',
+		batchLevel: 1,
+		durationMs: 125,
+		requestBytes: 2000,
+		sourceCount: 12,
+		inputTokens: 100,
+		outputTokens: 50,
+		usageKnown: true,
+		providerStatus: 'incomplete',
+		incompleteReason: 'max_output_tokens',
+	});
+	expect(JSON.stringify(safeLogFields(fields))).not.toContain(secret);
+	const claim = {
+		kind: 'task_description',
+		text: 'Synthetic plan',
+		evidence: [{ sourceId: 'synthetic', quote: 'Plan' }],
+	};
+	const parsed = ReportDraft.safeParse({
+		schemaVersion: '1.0',
+		groups: [
+			{ title: 'First', claims: Array.from({ length: 5 }, () => claim) },
+			{ title: 'Second', claims: Array.from({ length: 5 }, () => claim) },
+		],
+		limitations: [],
+		explanation: 'Synthetic test',
+	});
+	expect(safeError(parsed.error)).toMatchObject({
+		type: 'ZodError',
+		issues: [
+			{ code: 'custom', path: 'groups', constraint: 'total_claims', maximum: 8, actual: 10 },
+		],
 	});
 });

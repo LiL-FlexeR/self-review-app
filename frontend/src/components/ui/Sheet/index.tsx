@@ -40,16 +40,40 @@ function SheetContent({
 	children,
 	side = 'right',
 	showCloseButton = true,
+	onOpenAutoFocus,
+	onCloseAutoFocus,
 	...props
 }: React.ComponentProps<typeof SheetPrimitive.Content> & {
 	side?: 'top' | 'right' | 'bottom' | 'left';
 	showCloseButton?: boolean;
 }) {
+	const previousFocus = React.useRef<HTMLElement | null>(null);
+
 	return (
 		<SheetPortal>
 			<SheetOverlay />
 			<SheetPrimitive.Content
 				data-slot="sheet-content"
+				onOpenAutoFocus={(event) => {
+					previousFocus.current =
+						document.activeElement instanceof HTMLElement
+							? document.activeElement
+							: null;
+					onOpenAutoFocus?.(event);
+				}}
+				onCloseAutoFocus={(event) => {
+					onCloseAutoFocus?.(event);
+					const target = previousFocus.current;
+					// Controlled sheets can open without a Radix Trigger to restore focus to.
+					if (
+						!event.defaultPrevented &&
+						target?.isConnected &&
+						target !== document.body
+					) {
+						event.preventDefault();
+						target.focus({ preventScroll: true });
+					}
+				}}
 				className={cn(
 					'fixed z-50 flex flex-col gap-4 bg-background transition ease-in-out data-[state=closed]:animate-out data-[state=closed]:duration-300 data-[state=open]:animate-in data-[state=open]:duration-500',
 					side === 'right' &&

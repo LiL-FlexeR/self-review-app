@@ -16,6 +16,16 @@ export function TaskDetails({ id, userId }: { id: string; userId: string }) {
 	return (
 		<div className="space-y-3 whitespace-pre-wrap break-words p-4">
 			<h3>{task.data!.title}</h3>
+			{task.data!.safeUrl && (
+				<a
+					href={task.data!.safeUrl}
+					target="_blank"
+					rel="noreferrer"
+					className="text-sm underline"
+				>
+					Open tracker task
+				</a>
+			)}
 			<p>{task.data!.description || 'No description available.'}</p>
 			<p className="text-sm text-muted-foreground">
 				Details: {task.data!.detailStatus} · Comments: {task.data!.commentReadState}

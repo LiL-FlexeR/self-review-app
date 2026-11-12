@@ -3,8 +3,10 @@ import { ApiError } from '@self-review/contracts';
 import { z as zod } from 'zod';
 import type { ILogFields } from './logging.interfaces.js';
 import { validationLogDetails } from './logging-diagnostics.js';
+import { PROVIDER_ERROR_CODES } from '@app/errors/provider.error';
 
 const ERROR_MESSAGES = new Set([
+	...PROVIDER_ERROR_CODES,
 	'INVALID_MODEL_OUTPUT',
 	'GUARDRAIL_VIOLATION',
 	'BUDGET_EXHAUSTED',
@@ -86,17 +88,33 @@ const LABELS = {
 	]),
 	state: new Set(['queued', 'running', 'succeeded', 'partial', 'failed']),
 	tool: new Set(['list_issues', 'get_issue_details', 'get_issue_comments']),
+	phase: new Set(['sync', 'review', 'sync-reduce', 'review-reduce']),
+	providerStatus: new Set([
+		'completed',
+		'failed',
+		'incomplete',
+		'cancelled',
+		'queued',
+		'in_progress',
+		'scripted',
+	]),
+	incompleteReason: new Set(['max_output_tokens', 'content_filter']),
+	model: new Set(['gpt-5.4-mini-2026-03-17']),
+	reasoningEffort: new Set(['low']),
 };
 
 const SCHEMA_FIELDS = new Set([
 	'schemaVersion',
 	'findings',
 	'groups',
+	'groupTitles',
+	'groupIndex',
 	'claims',
 	'title',
 	'kind',
 	'text',
 	'evidence',
+	'evidenceRefs',
 	'sourceId',
 	'quote',
 	'limitations',
@@ -150,6 +168,26 @@ export function safeFieldPath(path: PropertyKey[]): string {
 			return SCHEMA_FIELDS.has(String(part)) ? String(part) : '[field]';
 		})
 		.join('.');
+}
+
+export function customConstraintDetails(
+	issue: zod.core.$ZodIssue,
+): Record<string, string | number> {
+	if (issue.code !== 'custom' || !issue.params || issue.params.constraint !== 'total_claims') {
+		return {};
+	}
+	const { maximum, actual } = issue.params;
+	if (
+		typeof maximum !== 'number' ||
+		typeof actual !== 'number' ||
+		!Number.isSafeInteger(maximum) ||
+		!Number.isSafeInteger(actual) ||
+		maximum < 0 ||
+		actual < 0
+	) {
+		return {};
+	}
+	return { constraint: 'total_claims', maximum, actual };
 }
 
 export function safeError(error: unknown): Record<string, unknown> {
@@ -215,7 +253,7 @@ export function safeError(error: unknown): Record<string, unknown> {
 			) {
 				details.maximum = issue.maximum;
 			}
-			return details;
+			return { ...details, ...customConstraintDetails(issue) };
 		});
 	} else if (ERROR_MESSAGES.has(error.message)) {
 		result.code = error.message;
@@ -258,6 +296,7 @@ export function safeLogFields(fields: ILogFields): Record<string, unknown> {
 	}
 	for (const key of [
 		'attempt',
+		'unitAttempt',
 		'claimIndex',
 		'evidenceIndex',
 		'count',
@@ -267,16 +306,46 @@ export function safeLogFields(fields: ILogFields): Record<string, unknown> {
 		'bytes',
 		'port',
 		'status',
+		'durationMs',
+		'batchLevel',
+		'taskCount',
+		'sourceCount',
+		'claimCount',
+		'attemptLimit',
+		'requestBytes',
+		'outputBytes',
+		'historyItems',
+		'inputTokens',
+		'outputTokens',
+		'cachedInputTokens',
+		'reasoningTokens',
+		'retryDelayMs',
 	] as const) {
 		const value = fields[key];
 		if (typeof value === 'number' && Number.isFinite(value)) {
 			result[key] = value;
 		}
 	}
-	for (const key of ['reason', 'method', 'stage', 'state', 'tool'] as const) {
+	for (const key of [
+		'reason',
+		'method',
+		'stage',
+		'state',
+		'tool',
+		'phase',
+		'providerStatus',
+		'incompleteReason',
+		'model',
+		'reasoningEffort',
+	] as const) {
 		const value = fields[key];
 		if (typeof value === 'string' && LABELS[key].has(value)) {
 			result[key] = value;
+		}
+	}
+	for (const key of ['usageKnown', 'corrected', 'cacheHit'] as const) {
+		if (typeof fields[key] === 'boolean') {
+			result[key] = fields[key];
 		}
 	}
 	if (fields.fields) {

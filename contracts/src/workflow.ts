@@ -47,7 +47,20 @@ export const ReportDraft = zod
 		limitations: zod.array(zod.string().max(300)).max(8),
 		explanation: zod.string().max(400),
 	})
-	.refine((draft) => draft.groups.reduce((count, group) => count + group.claims.length, 0) <= 8);
+	.superRefine((draft, context) => {
+		const actual = draft.groups.reduce((count, group) => count + group.claims.length, 0);
+		if (actual > 8) {
+			context.addIssue({
+				code: 'custom',
+				path: ['groups'],
+				message: 'At most 8 claims in total across all groups.',
+				params: { constraint: 'total_claims', maximum: 8, actual },
+			});
+		}
+	})
+	.describe(
+		'Self-review with at most 8 claims TOTAL across all groups combined, not 8 per group.',
+	);
 export const Source = zod.object({
 	id: zod.string(),
 	taskSnapshotId: Id,
@@ -79,6 +92,10 @@ export const ProjectView = zod.object({
 	resourceType: zod.string(),
 	breadcrumb: zod.array(zod.string()),
 });
+export const ConnectionsView = zod.object({
+	items: zod.array(ConnectionView),
+	availableProviders: zod.array(zod.enum(['fixture', 'linear'])),
+});
 export const JobView = zod.object({
 	runId: Id,
 	type: zod.enum(['sync', 'review']),
@@ -92,6 +109,7 @@ export const JobView = zod.object({
 	resultRef: zod.string().nullable(),
 	errorCode: zod.string().nullable(),
 	warningsCount: zod.number(),
+	warnings: zod.array(zod.string()).optional(),
 	autoReview: zod.string().nullable(),
 	reviewRunId: Id.nullable(),
 	currentReviewReportId: Id.nullable(),

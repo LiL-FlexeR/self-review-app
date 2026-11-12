@@ -71,6 +71,12 @@ export function ProjectPage() {
 		queryFn: ({ signal }) => read(`/jobs/${snapshotId}`, JobView, signal),
 	});
 	const snapshot = selectedSnapshot.data ?? syncs.find((run) => run.runId === snapshotId);
+	const automaticReviewId = snapshot?.reviewRunId;
+	const automaticReview = useQuery({
+		queryKey: [userId, 'job', automaticReviewId],
+		enabled: !!automaticReviewId && !!identity,
+		queryFn: ({ signal }) => read(`/jobs/${automaticReviewId}`, JobView, signal),
+	});
 
 	const tasks = useQuery({
 		queryKey: [...key, 'tasks', snapshotId, cursor],
@@ -118,8 +124,11 @@ export function ProjectPage() {
 			{project.data && (
 				<div className="space-y-6">
 					<p className="text-sm text-muted-foreground">
-						{project.data.connection.displayName} · synthetic fixture data ·{' '}
-						{project.data.connection.modelMode} model
+						{project.data.connection.displayName} ·{' '}
+						{project.data.connection.mode === 'fixture'
+							? 'synthetic fixture data'
+							: 'live tracker data'}{' '}
+						· {project.data.connection.modelMode} model
 						<br />
 						Tracker token owner / review subject:{' '}
 						{project.data.connection.sourceUserName} (
@@ -185,11 +194,17 @@ export function ProjectPage() {
 								{job.data && (
 									<p className="text-sm">
 										{job.data.type}: {job.data.state} · {job.data.stage} · saved{' '}
-										{job.data.counts.saved} · batches {job.data.counts.batches}{' '}
-										· {job.data.errorCode ?? job.data.autoReview ?? ''}
+										{job.data.counts.saved} · batches {job.data.counts.batches}
+										{job.data.errorCode && <> · {job.data.errorCode}</>}
+										{job.data.type === 'sync' && job.data.autoReview && (
+											<> · automatic review: {job.data.autoReview}</>
+										)}
 									</p>
 								)}
 								<p className="break-all text-xs">Run: {runId}</p>
+								{job.data?.warnings?.map((warning) => (
+									<Status key={warning}>{warning}</Status>
+								))}
 								<Button variant="outline" onClick={stream.reconnect}>
 									Reconnect
 								</Button>
@@ -252,6 +267,21 @@ export function ProjectPage() {
 									{String(snapshot?.importComplete)} · Analysis:{' '}
 									{String(snapshot?.analysisComplete)}
 								</p>
+								{snapshot && (
+									<Status>
+										Synchronization: {snapshot.state}. Automatic self-review:{' '}
+										{automaticReviewId
+											? (automaticReview.data?.state ??
+												'loading saved outcome…')
+											: (snapshot.autoReview ?? 'not requested')}
+										{automaticReview.data?.errorCode && (
+											<> · {automaticReview.data.errorCode}</>
+										)}
+										{automaticReview.error && (
+											<> · {automaticReview.error.message}</>
+										)}
+									</Status>
+								)}
 								{tasks.isPending && <Status>Loading saved tasks…</Status>}
 								{tasks.error && <Status>{tasks.error.message}</Status>}
 								{tasks.data?.items.length === 0 && (
@@ -301,6 +331,16 @@ export function ProjectPage() {
 														>
 															{task.identifier} · {task.title}
 														</button>
+														{task.safeUrl && (
+															<a
+																href={task.safeUrl}
+																target="_blank"
+																rel="noreferrer"
+																className="mt-1 block underline"
+															>
+																Open tracker task
+															</a>
+														)}
 													</td>
 													<td className="p-2">
 														{task.state}

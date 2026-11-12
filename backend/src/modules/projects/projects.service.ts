@@ -9,7 +9,8 @@ import {
 } from '@self-review/contracts';
 import { DatabaseService } from '@app/shared/database/database.service';
 import { ConfigService } from '@app/shared/config/config.service';
-import { FixtureService } from '@app/modules/providers/fixture.service';
+import { FixtureService } from '@app/modules/providers/adapters/fixture/fixture.service';
+import { ProvidersService } from '@app/modules/providers/providers.service';
 import { JobsService } from '@app/modules/jobs/services/jobs.service';
 import { SourcesService } from '@app/modules/agent/services/sources.service';
 import { Analysis } from '@app/modules/agent/agent.schemas';
@@ -38,6 +39,7 @@ export class ProjectsService {
 		@Inject(DatabaseService) private readonly database: DatabaseService,
 		@Inject(ConfigService) private readonly configuration: ConfigService,
 		@Inject(FixtureService) private readonly fixture: FixtureService,
+		@Inject(ProvidersService) private readonly providers: ProvidersService,
 		@Inject(JobsService) private readonly jobs: JobsService,
 		@Inject(SourcesService) private readonly sources: SourcesService,
 	) {}
@@ -54,6 +56,8 @@ export class ProjectsService {
 
 	async connections(ownerId: string) {
 		return {
+			availableProviders:
+				this.configuration.get('APP_MODE') === 'live' ? ['linear'] : ['fixture'],
 			items: (
 				await this.database.client.connection.findMany({
 					where: { ownerId },
@@ -112,6 +116,28 @@ export class ProjectsService {
 				message: HTTP_ERROR_MESSAGE.RESOURCE_NOT_FOUND,
 				retryable: false,
 			});
+		}
+		if (connection.mode === 'live') {
+			const after = parse(zod.string().min(1).max(4096).nullable(), cursor ?? null);
+			const result = await this.providers.catalog(connection, after);
+			const items = [];
+			for (const project of result.items) {
+				items.push(
+					ProjectView.parse(
+						await this.database.client.sourceProject.upsert({
+							where: {
+								connectionId_externalId: {
+									connectionId,
+									externalId: project.externalId,
+								},
+							},
+							create: { connectionId, ...project },
+							update: project,
+						}),
+					),
+				);
+			}
+			return { items, nextCursor: result.nextCursor };
 		}
 		const options = pagination(cursor);
 		return page(

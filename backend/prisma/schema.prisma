@@ -56,6 +56,7 @@ model Connection {
   credentialVersion Int @default(1) @map("credential_version")
   sourceUserId String @map("source_user_id")
   sourceUserName String @map("source_user_name")
+  sourceScopeId String? @map("source_scope_id")
   sourceBaseUrl String? @map("source_base_url")
   status String @default("active")
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz

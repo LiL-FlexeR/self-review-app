@@ -1,11 +1,12 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { TSource } from '@self-review/contracts';
-import { aggregateUsage } from '@app/modules/agent/agent.usage';
+import { aggregateUsage } from '@app/modules/agent/utils/usage';
 import { ReportDraft } from '@self-review/contracts';
 import { DatabaseService } from '@app/shared/database/database.service';
 import { AgentService } from '@app/modules/agent/services/agent.service';
 import { SourcesService } from '@app/modules/agent/services/sources.service';
-import { json, markdown } from '@app/modules/agent/agent.utils';
+import { markdown } from '@app/modules/agent/utils';
+import { json } from '@app/utils/json';
 import { ConfigService } from '@app/shared/config/config.service';
 import { AppLogger } from '@app/shared/logging/logger';
 

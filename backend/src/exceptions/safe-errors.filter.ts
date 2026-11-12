@@ -5,6 +5,7 @@ import type { TApiError } from '@self-review/contracts';
 import { randomUUID } from 'node:crypto';
 import type { Request, Response } from 'express';
 import { AppLogger, getLogContext } from '@app/shared/logging/logger';
+import { ProviderError } from '@app/errors/provider.error';
 
 const logger = new AppLogger('SafeErrorsFilter');
 
@@ -19,7 +20,17 @@ export class SafeErrorsFilter implements ExceptionFilter {
 			retryable: true,
 		};
 
-		if (error instanceof HttpException) {
+		if (error instanceof ProviderError) {
+			status =
+				error.code === 'PROVIDER_RATE_LIMITED'
+					? HttpStatus.TOO_MANY_REQUESTS
+					: HttpStatus.BAD_GATEWAY;
+			publicError = {
+				code: error.code,
+				message: HTTP_ERROR_MESSAGE[error.code],
+				retryable: error.retryable,
+			};
+		} else if (error instanceof HttpException) {
 			status = error.getStatus();
 
 			// Only intentionally structured public payloads are exposed. Raw Nest,

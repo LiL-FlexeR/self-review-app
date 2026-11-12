@@ -1,54 +1,113 @@
 {
 	"items": [
 		{
-			"batchId": "f0aaa6d4-bb5a-4d93-a7ab-6f3d4acb2efe",
+			"batchId": "0e790ce4-78b0-46d4-a7cc-e5d7858db53e",
 			"level": 0,
 			"events": [
 				{
 					"event": "unit_started",
-					"runId": "98b978cd-7732-437d-8129-558662f0cb1d",
-					"batchId": "f0aaa6d4-bb5a-4d93-a7ab-6f3d4acb2efe",
-					"taskCount": 6
+					"phase": "sync",
+					"taskCount": 6,
+					"timestamp": "2026-11-12T23:38:31.821Z",
+					"batchLevel": 0,
+					"claimCount": 0,
+					"sourceCount": 0,
+					"attemptLimit": 8
 				},
 				{
 					"event": "model_started",
-					"attempt": 1
+					"attempt": 1,
+					"timestamp": "2026-11-12T23:38:31.844Z",
+					"sourceCount": 0,
+					"unitAttempt": 1,
+					"historyItems": 1
 				},
 				{
-					"mode": "scripted",
 					"event": "model_completed",
-					"usage": null,
-					"attempt": 1
+					"attempt": 1,
+					"timestamp": "2026-11-12T23:38:31.852Z",
+					"durationMs": 4,
+					"usageKnown": false,
+					"outputBytes": 0,
+					"unitAttempt": 1,
+					"providerStatus": "scripted"
+				},
+				{
+					"tool": "list_issues",
+					"event": "tool_started",
+					"attempt": 1,
+					"timestamp": "2026-11-12T23:38:31.855Z",
+					"unitAttempt": 1
 				},
 				{
 					"tool": "list_issues",
 					"bytes": 920,
-					"event": "tool_completed"
+					"event": "tool_completed",
+					"attempt": 1,
+					"timestamp": "2026-11-12T23:38:31.860Z",
+					"durationMs": 5,
+					"sourceCount": 0,
+					"unitAttempt": 1
 				},
 				{
 					"event": "model_started",
-					"attempt": 2
+					"attempt": 2,
+					"timestamp": "2026-11-12T23:38:31.866Z",
+					"sourceCount": 0,
+					"unitAttempt": 2,
+					"historyItems": 3
 				},
 				{
-					"mode": "scripted",
 					"event": "model_completed",
-					"usage": null,
-					"attempt": 2
+					"attempt": 2,
+					"timestamp": "2026-11-12T23:38:31.881Z",
+					"durationMs": 8,
+					"usageKnown": false,
+					"outputBytes": 0,
+					"unitAttempt": 2,
+					"providerStatus": "scripted"
 				},
 				{
 					"tool": "get_issue_details",
-					"bytes": 4298,
-					"event": "tool_completed"
+					"event": "tool_started",
+					"attempt": 2,
+					"timestamp": "2026-11-12T23:38:31.905Z",
+					"unitAttempt": 2
+				},
+				{
+					"tool": "get_issue_details",
+					"bytes": 3980,
+					"event": "tool_completed",
+					"attempt": 2,
+					"timestamp": "2026-11-12T23:38:31.919Z",
+					"durationMs": 14,
+					"sourceCount": 11,
+					"unitAttempt": 2
 				},
 				{
 					"event": "model_started",
-					"attempt": 3
+					"attempt": 3,
+					"timestamp": "2026-11-12T23:38:31.926Z",
+					"sourceCount": 11,
+					"unitAttempt": 3,
+					"historyItems": 5
 				},
 				{
-					"mode": "scripted",
 					"event": "model_completed",
-					"usage": null,
-					"attempt": 3
+					"attempt": 3,
+					"timestamp": "2026-11-12T23:38:31.932Z",
+					"durationMs": 3,
+					"usageKnown": false,
+					"outputBytes": 0,
+					"unitAttempt": 3,
+					"providerStatus": "scripted"
+				},
+				{
+					"tool": "get_issue_comments",
+					"event": "tool_started",
+					"attempt": 3,
+					"timestamp": "2026-11-12T23:38:31.935Z",
+					"unitAttempt": 3
 				},
 				{
 					"tool": "get_issue_comments",
@@ -61,17 +120,40 @@
 				{
 					"tool": "get_issue_comments",
 					"bytes": 519,
-					"event": "tool_completed"
+					"event": "tool_completed",
+					"attempt": 3,
+					"timestamp": "2026-11-12T23:38:31.952Z",
+					"durationMs": 17,
+					"sourceCount": 12,
+					"unitAttempt": 3
 				},
 				{
 					"event": "model_started",
-					"attempt": 4
+					"attempt": 4,
+					"timestamp": "2026-11-12T23:38:31.959Z",
+					"sourceCount": 12,
+					"unitAttempt": 4,
+					"historyItems": 7
 				},
 				{
-					"mode": "scripted",
 					"event": "model_completed",
-					"usage": null,
-					"attempt": 4
+					"attempt": 4,
+					"timestamp": "2026-11-12T23:38:31.965Z",
+					"durationMs": 2,
+					"usageKnown": false,
+					"outputBytes": 1713,
+					"unitAttempt": 4,
+					"providerStatus": "scripted"
+				},
+				{
+					"count": 16,
+					"event": "unit_completed",
+					"attempt": 4,
+					"corrected": false,
+					"timestamp": "2026-11-12T23:38:31.969Z",
+					"claimCount": 5,
+					"sourceCount": 12,
+					"unitAttempt": 4
 				}
 			]
 		}

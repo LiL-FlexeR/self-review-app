@@ -6,3 +6,4 @@ export type { TIdentity, TChallenge } from '@app/auth';
 
 export type { TApiError, THttpErrorCode } from '@app/errors';
 export * from '@app/workflow';
+export * from '@app/connections';

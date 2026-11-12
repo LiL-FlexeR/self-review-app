@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import type { TSource } from '@self-review/contracts';
 import { DatabaseService } from '@app/shared/database/database.service';
-import { excerpt } from '@app/modules/agent/agent.utils';
+import { excerpt } from '@app/utils/excerpt';
 
 @Injectable()
 export class SourcesService {

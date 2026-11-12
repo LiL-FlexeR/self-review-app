@@ -2,6 +2,8 @@ import {
 	Body,
 	Controller,
 	Get,
+	Put,
+	Delete,
 	HttpCode,
 	Inject,
 	Param,
@@ -12,7 +14,15 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { z as zod } from 'zod';
-import { FixtureCommand, SyncCommand, ReviewCommand } from '@self-review/contracts';
+import {
+	FixtureCommand,
+	LinearConnectionCommand,
+	ReplaceCredentialsCommand,
+	DeleteConnectionCommand,
+	SyncCommand,
+	ReviewCommand,
+} from '@self-review/contracts';
+import { ConnectionsService } from '@app/modules/connections/services/connections.service';
 import { AuthService } from '@app/modules/auth/services/auth.service';
 import { CryptoService } from '@app/modules/auth/services/crypto.service';
 import { JobsService } from '@app/modules/jobs/services/jobs.service';
@@ -29,6 +39,7 @@ export class ProjectsController {
 		@Inject(CryptoService) private readonly cryptoService: CryptoService,
 		@Inject(JobsService) private readonly jobs: JobsService,
 		@Inject(ProjectsService) private readonly projects: ProjectsService,
+		@Inject(ConnectionsService) private readonly connectionService: ConnectionsService,
 	) {}
 
 	private async identity(req: Request, mutate = false) {
@@ -45,8 +56,34 @@ export class ProjectsController {
 	}
 	@Post('connections') async add(@Req() req: Request, @Body() body: unknown) {
 		const identity = await this.identity(req, true);
-		parse(FixtureCommand, body);
-		return this.projects.add(identity.sub);
+		const command = parse(zod.union([FixtureCommand, LinearConnectionCommand]), body);
+		return command.provider === 'fixture'
+			? this.projects.add(identity.sub)
+			: this.projects.connectionView(await this.connectionService.add(identity.sub, command));
+	}
+	@Put('connections/:id') async replace(
+		@Req() req: Request,
+		@Param('id') id: string,
+		@Body() body: unknown,
+	) {
+		const identity = await this.identity(req, true);
+		return this.projects.connectionView(
+			await this.connectionService.replace(
+				identity.sub,
+				parse(zod.uuid(), id),
+				parse(ReplaceCredentialsCommand, body).credentials,
+			),
+		);
+	}
+	@Delete('connections/:id') @HttpCode(200) async remove(
+		@Req() req: Request,
+		@Param('id') id: string,
+		@Body() body: unknown,
+	) {
+		const identity = await this.identity(req, true);
+		parse(DeleteConnectionCommand, body);
+		await this.connectionService.remove(identity.sub, parse(zod.uuid(), id));
+		return { deleted: true };
 	}
 	@Get('connections/:id/projects') async catalog(
 		@Req() req: Request,

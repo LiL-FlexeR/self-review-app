@@ -20,6 +20,7 @@ export function diagnosticText(value: string, maximumCharacters = 2048): string 
 		}
 	}
 	redacted = redacted
+		.replace(/\blin_api_[A-Za-z0-9_-]+\b/g, '[REDACTED]')
 		.replace(/\bsk-[A-Za-z0-9_-]{12,}\b/g, '[REDACTED]')
 		.replace(/\beyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\b/g, '[REDACTED]')
 		.replace(/\b(Bearer|Basic)\s+[A-Za-z0-9._~+\/-]+=*/gi, '$1 [REDACTED]')

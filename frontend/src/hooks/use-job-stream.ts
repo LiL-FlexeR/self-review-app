@@ -31,6 +31,10 @@ export function useJobStream(
 					void queryClient.invalidateQueries({
 						queryKey: [userId, 'project', projectId],
 					});
+					if (state.type === 'review') {
+						// Publication changes the source snapshot's current-report pointer too.
+						void queryClient.invalidateQueries({ queryKey: [userId, 'job'] });
+					}
 				}
 			},
 		});

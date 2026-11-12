@@ -2,9 +2,10 @@ import { expect, it } from 'vitest';
 import { z as zod } from 'zod';
 import { randomUUID } from 'node:crypto';
 import type { TSource } from '@self-review/contracts';
-import { boundSources } from '@app/modules/agent/agent.utils';
+import { boundSources } from '@app/modules/agent/utils';
 import { EvidenceValidationError } from '@app/modules/agent/evidence-validation.error';
-import { outputCorrection } from '@app/modules/agent/output-correction';
+import { outputCorrection } from '@app/modules/agent/utils/output-correction';
+import { ReportDraft } from '@self-review/contracts';
 
 const source: TSource = {
 	id: 'sync:synthetic:issue:DEMO-108:description',
@@ -64,5 +65,36 @@ it('identifies a schema constraint instead of repeating only a generic error', (
 	expect(JSON.parse(correction.split('\n')[1]!)).toMatchObject({
 		reason: 'SCHEMA_INVALID',
 		issues: [{ code: 'too_big', path: ['findings'], maximum: 8 }],
+	});
+});
+
+it('reports actual and maximum totals when claims exceed the cross-group limit', () => {
+	const claim = {
+		kind: 'task_description',
+		text: 'Synthetic plan',
+		evidence: [{ sourceId: source.id, quote: 'Plan' }],
+	};
+	const parsed = ReportDraft.safeParse({
+		schemaVersion: '1.0',
+		groups: [
+			{ title: 'First area', claims: Array.from({ length: 5 }, () => claim) },
+			{ title: 'Second area', claims: Array.from({ length: 5 }, () => claim) },
+		],
+		limitations: [],
+		explanation: 'Synthetic reproduction.',
+	});
+	expect(parsed.success).toBe(false);
+	const details = JSON.parse(outputCorrection(parsed.error).split('\n')[1]!);
+	expect(details).toMatchObject({
+		reason: 'SCHEMA_INVALID',
+		issues: [
+			{
+				code: 'custom',
+				path: ['groups'],
+				constraint: 'total_claims',
+				maximum: 8,
+				actual: 10,
+			},
+		],
 	});
 });

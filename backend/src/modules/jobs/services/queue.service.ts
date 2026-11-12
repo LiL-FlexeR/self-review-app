@@ -4,6 +4,7 @@ import { Queue } from 'bullmq';
 import { ConfigService } from '@app/shared/config/config.service';
 import { DatabaseService } from '@app/shared/database/database.service';
 import { AppLogger } from '@app/shared/logging/logger';
+import { json } from '@app/utils/json';
 
 const logger = new AppLogger('QueueService');
 
@@ -57,8 +58,8 @@ export class QueueService implements OnModuleInit, OnApplicationShutdown {
 		});
 		for (const run of interrupted) {
 			const saved = await db.taskSnapshot.count({ where: { syncRunId: run.id } });
-			await db.$transaction(async (transaction) => {
-				await transaction.jobRun.updateMany({
+			const recovered = await db.$transaction(async (transaction) => {
+				const changed = await transaction.jobRun.updateMany({
 					where: {
 						id: run.id,
 						state: 'running',
@@ -75,11 +76,42 @@ export class QueueService implements OnModuleInit, OnApplicationShutdown {
 						version: { increment: 1 },
 					},
 				});
+				if (!changed.count) {
+					return false;
+				}
 				await transaction.modelAttempt.updateMany({
 					where: { runId: run.id, status: 'submitted' },
 					data: { status: 'interrupted', usageUnknown: true },
 				});
+				const batches = await transaction.analysisBatch.findMany({
+					where: { runId: run.id, state: { in: ['pending', 'running'] } },
+					select: { id: true, trace: true },
+				});
+				for (const batch of batches) {
+					await transaction.analysisBatch.update({
+						where: { id: batch.id },
+						data: {
+							state: 'failed',
+							trace: json([
+								...(Array.isArray(batch.trace) ? batch.trace.slice(0, 99) : []),
+								{
+									event: 'unit_interrupted',
+									timestamp: new Date().toISOString(),
+									errorCode: 'RUN_INTERRUPTED',
+								},
+							]),
+						},
+					});
+				}
+				return true;
 			});
+			if (recovered) {
+				logger.warn('run_interrupted', {
+					runId: run.id,
+					reason: 'RUN_INTERRUPTED',
+					state: run.type === 'sync' && saved ? 'partial' : 'failed',
+				});
+			}
 		}
 	}
 

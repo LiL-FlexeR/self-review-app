@@ -1,5 +1,5 @@
 import type { TAnalysis } from '@app/modules/agent/agent.schemas';
-import type { IProviderTask } from '@app/modules/providers/fixture.service';
+import type { IProviderTask } from '@app/modules/providers/provider.interfaces';
 import type { Prisma } from '@app/generated/prisma/client';
 
 export interface IJobScope {
@@ -28,6 +28,7 @@ export interface ITaskRefresh {
 	refreshStatus: 'fresh' | 'copied' | 'stale';
 	details?: IProviderTask;
 	refreshFailed: boolean;
+	errorCode?: string;
 }
 
 export interface ISyncPublication {

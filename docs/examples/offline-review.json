@@ -1,7 +1,7 @@
 {
-	"id": "3d7e35bc-18c7-4971-a6c0-0474799a58ba",
-	"reviewRunId": "e7e7fb75-3da1-4581-af29-55420d4ad949",
-	"sourceSyncRunId": "98b978cd-7732-437d-8129-558662f0cb1d",
+	"id": "1fcfd7ed-da6c-4573-8e09-b46c4a182bde",
+	"reviewRunId": "f5b5b005-37fc-4fe8-b662-2ec1d27ea775",
+	"sourceSyncRunId": "375f942d-c6eb-49ca-b661-949d15dea9ae",
 	"subjectSourceUserId": "demo-anna",
 	"draft": {
 		"schemaVersion": "1.0",
@@ -14,7 +14,7 @@
 						"text": "The saved description states: Add an index to speed up the API.",
 						"evidence": [
 							{
-								"sourceId": "sync:98b978cd-7732-437d-8129-558662f0cb1d:issue:DEMO-101:description",
+								"sourceId": "sync:375f942d-c6eb-49ca-b661-949d15dea9ae:issue:DEMO-101:description",
 								"quote": "Add an index to speed up the API."
 							}
 						]
@@ -24,7 +24,7 @@
 						"text": "The saved comment states: After adding the index, p95 decreased from 1200 to 900 ms on staging, based on 1000 requests. Production rollout is not confirmed.",
 						"evidence": [
 							{
-								"sourceId": "sync:98b978cd-7732-437d-8129-558662f0cb1d:comment:afb8eee8-bee1-44a2-9e46-ef24e484ee62",
+								"sourceId": "sync:375f942d-c6eb-49ca-b661-949d15dea9ae:comment:2b796d95-4c18-49dc-a31f-99b127b705fa",
 								"quote": "After adding the index, p95 decreased from 1200 to 900 ms on staging, based on 1000 requests. Production rollout is not confirmed."
 							}
 						]
@@ -34,7 +34,7 @@
 						"text": "The saved description states: Add retries for transient errors",
 						"evidence": [
 							{
-								"sourceId": "sync:98b978cd-7732-437d-8129-558662f0cb1d:issue:DEMO-102:description",
+								"sourceId": "sync:375f942d-c6eb-49ca-b661-949d15dea9ae:issue:DEMO-102:description",
 								"quote": "Add retries for transient errors"
 							}
 						]
@@ -44,7 +44,7 @@
 						"text": "The saved description states: Plan the next reliability experiment.",
 						"evidence": [
 							{
-								"sourceId": "sync:98b978cd-7732-437d-8129-558662f0cb1d:issue:DEMO-110:description",
+								"sourceId": "sync:375f942d-c6eb-49ca-b661-949d15dea9ae:issue:DEMO-110:description",
 								"quote": "Plan the next reliability experiment."
 							}
 						]
@@ -59,53 +59,53 @@
 		],
 		"explanation": "Evidence comes from saved excerpts; offline output does not verify model judgment."
 	},
-	"markdown": "# Self-review draft\n\n## Saved work\n\n- The saved description states: Add an index to speed up the API. (task_description)\n  > Add an index to speed up the API.\n  Source: sync:98b978cd-7732-437d-8129-558662f0cb1d:issue:DEMO-101:description\n\n- The saved comment states: After adding the index, p95 decreased from 1200 to 900 ms on staging, based on 1000 requests. Production rollout is not confirmed. (reported_measurement)\n  > After adding the index, p95 decreased from 1200 to 900 ms on staging, based on 1000 requests. Production rollout is not confirmed.\n  Source: sync:98b978cd-7732-437d-8129-558662f0cb1d:comment:afb8eee8-bee1-44a2-9e46-ef24e484ee62\n\n- The saved description states: Add retries for transient errors (task_description)\n  > Add retries for transient errors\n  Source: sync:98b978cd-7732-437d-8129-558662f0cb1d:issue:DEMO-102:description\n\n- The saved description states: Plan the next reliability experiment. (task_description)\n  > Plan the next reliability experiment.\n  Source: sync:98b978cd-7732-437d-8129-558662f0cb1d:issue:DEMO-110:description\n\n## Limitations\n\n- Synthetic scripted model output; individual contribution and production rollout are not confirmed.\n\n- Selection uses task creation dates in UTC and current source snapshots; outcome timing may differ.\n\n- Assignment does not confirm individual contribution or production rollout.\n\nEvidence comes from saved excerpts; offline output does not verify model judgment.\n\nSaved source references: 4",
+	"markdown": "# Self-review draft\n\n## Saved work\n\n- The saved description states: Add an index to speed up the API. (task_description)\n  > Add an index to speed up the API.\n  Source: sync:375f942d-c6eb-49ca-b661-949d15dea9ae:issue:DEMO-101:description\n\n- The saved comment states: After adding the index, p95 decreased from 1200 to 900 ms on staging, based on 1000 requests. Production rollout is not confirmed. (reported_measurement)\n  > After adding the index, p95 decreased from 1200 to 900 ms on staging, based on 1000 requests. Production rollout is not confirmed.\n  Source: sync:375f942d-c6eb-49ca-b661-949d15dea9ae:comment:2b796d95-4c18-49dc-a31f-99b127b705fa\n\n- The saved description states: Add retries for transient errors (task_description)\n  > Add retries for transient errors\n  Source: sync:375f942d-c6eb-49ca-b661-949d15dea9ae:issue:DEMO-102:description\n\n- The saved description states: Plan the next reliability experiment. (task_description)\n  > Plan the next reliability experiment.\n  Source: sync:375f942d-c6eb-49ca-b661-949d15dea9ae:issue:DEMO-110:description\n\n## Limitations\n\n- Synthetic scripted model output; individual contribution and production rollout are not confirmed.\n\n- Selection uses task creation dates in UTC and current source snapshots; outcome timing may differ.\n\n- Assignment does not confirm individual contribution or production rollout.\n\nEvidence comes from saved excerpts; offline output does not verify model judgment.\n\nSaved source references: 4",
 	"sources": [
 		{
-			"id": "sync:98b978cd-7732-437d-8129-558662f0cb1d:issue:DEMO-101:description",
-			"taskSnapshotId": "d98ba2b9-e438-47b9-8ea9-8907e3fd8954",
+			"id": "sync:375f942d-c6eb-49ca-b661-949d15dea9ae:issue:DEMO-101:description",
+			"taskSnapshotId": "a4754833-3e9d-4931-a0aa-e4275fa79c1c",
 			"kind": "description",
 			"textExcerpt": "Add an index to speed up the API.",
 			"url": null,
 			"createdAt": "2026-10-05T10:00:00.000Z",
 			"updatedAt": null,
-			"retrievedAt": "2026-11-12T00:11:35.440Z",
+			"retrievedAt": "2026-11-12T23:38:31.794Z",
 			"truncated": false,
 			"state": "completed"
 		},
 		{
-			"id": "sync:98b978cd-7732-437d-8129-558662f0cb1d:comment:afb8eee8-bee1-44a2-9e46-ef24e484ee62",
-			"taskSnapshotId": "d98ba2b9-e438-47b9-8ea9-8907e3fd8954",
+			"id": "sync:375f942d-c6eb-49ca-b661-949d15dea9ae:comment:2b796d95-4c18-49dc-a31f-99b127b705fa",
+			"taskSnapshotId": "a4754833-3e9d-4931-a0aa-e4275fa79c1c",
 			"kind": "comment",
 			"textExcerpt": "After adding the index, p95 decreased from 1200 to 900 ms on staging, based on 1000 requests. Production rollout is not confirmed.",
 			"url": null,
 			"createdAt": "2026-10-09T12:00:00.000Z",
 			"updatedAt": null,
-			"retrievedAt": "2026-11-12T00:11:35.483Z",
+			"retrievedAt": "2026-11-12T23:38:31.946Z",
 			"truncated": false,
 			"state": "completed"
 		},
 		{
-			"id": "sync:98b978cd-7732-437d-8129-558662f0cb1d:issue:DEMO-102:description",
-			"taskSnapshotId": "f33225f2-df7d-45db-9cb5-16c5039c0e18",
+			"id": "sync:375f942d-c6eb-49ca-b661-949d15dea9ae:issue:DEMO-102:description",
+			"taskSnapshotId": "9e4b3362-4a91-4de7-ac47-5f2393376a59",
 			"kind": "description",
 			"textExcerpt": "Add retries for transient errors",
 			"url": null,
 			"createdAt": "2026-10-10T10:00:00.000Z",
 			"updatedAt": null,
-			"retrievedAt": "2026-11-12T00:11:35.442Z",
+			"retrievedAt": "2026-11-12T23:38:31.789Z",
 			"truncated": false,
 			"state": "started"
 		},
 		{
-			"id": "sync:98b978cd-7732-437d-8129-558662f0cb1d:issue:DEMO-110:description",
-			"taskSnapshotId": "4c4b18d7-ba09-4fd4-b60a-ceb826e59dac",
+			"id": "sync:375f942d-c6eb-49ca-b661-949d15dea9ae:issue:DEMO-110:description",
+			"taskSnapshotId": "a43b0d12-1e01-492d-ab57-0741f781115d",
 			"kind": "description",
 			"textExcerpt": "Plan the next reliability experiment.",
 			"url": null,
 			"createdAt": "2026-10-01T00:00:00.000Z",
 			"updatedAt": null,
-			"retrievedAt": "2026-11-12T00:11:35.430Z",
+			"retrievedAt": "2026-11-12T23:38:31.792Z",
 			"truncated": false,
 			"state": "backlog"
 		}
@@ -132,6 +132,6 @@
 		"analysisComplete": true,
 		"targetTasks": 5
 	},
-	"createdAt": "2026-11-12T00:11:35.541Z",
-	"traceUrl": "/api/jobs/e7e7fb75-3da1-4581-af29-55420d4ad949/trace"
+	"createdAt": "2026-11-12T23:38:32.088Z",
+	"traceUrl": "/api/jobs/f5b5b005-37fc-4fe8-b662-2ec1d27ea775/trace"
 }

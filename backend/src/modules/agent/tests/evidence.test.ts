@@ -1,10 +1,11 @@
-import { aggregateUsage } from '@app/modules/agent/agent.usage';
+import { aggregateUsage } from '@app/modules/agent/utils/usage';
 import { describe, it, expect, vi } from 'vitest';
 import { AppLogger } from '@app/shared/logging/logger';
 import { randomUUID } from 'node:crypto';
 import { SyncCommand, ReviewCommand } from '@self-review/contracts';
 import type { TSource } from '@self-review/contracts';
-import { validateEvidence, excerpt, markdown } from '@app/modules/agent/agent.utils';
+import { validateEvidence, markdown } from '@app/modules/agent/utils';
+import { excerpt } from '@app/utils/excerpt';
 import { Analysis } from '@app/modules/agent/agent.schemas';
 const source: TSource = {
 	id: 'sync:known:description',
