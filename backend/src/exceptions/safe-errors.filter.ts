@@ -3,7 +3,10 @@ import type { ArgumentsHost, ExceptionFilter } from '@nestjs/common';
 import { ApiError, HTTP_ERROR_CODE, HTTP_ERROR_MESSAGE } from '@self-review/contracts';
 import type { TApiError } from '@self-review/contracts';
 import { randomUUID } from 'node:crypto';
-import type { Response } from 'express';
+import type { Request, Response } from 'express';
+import { AppLogger, getLogContext } from '@app/shared/logging/logger';
+
+const logger = new AppLogger('SafeErrorsFilter');
 
 @Catch()
 export class SafeErrorsFilter implements ExceptionFilter {
@@ -32,9 +35,18 @@ export class SafeErrorsFilter implements ExceptionFilter {
 					};
 		}
 
+		const requestId = getLogContext()?.requestId ?? randomUUID();
+		const req = host.switchToHttp().getRequest<Request>();
+		const fields = { error, requestId, status, method: req.method };
+		if (status >= 500) {
+			logger.error('http_request_failed', fields);
+		} else {
+			logger.warn('http_request_rejected', fields);
+		}
+
 		res.status(status).json({
 			error: publicError,
-			requestId: randomUUID(),
+			requestId,
 		});
 	}
 }

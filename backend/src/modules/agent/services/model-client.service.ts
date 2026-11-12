@@ -6,6 +6,9 @@ import type { TClaim } from '@self-review/contracts';
 import { ConfigService } from '@app/shared/config/config.service';
 import { Analysis, TOOL_SCHEMAS, SAFETY, LIMITS } from '@app/modules/agent/agent.schemas';
 import type { IModelInput, IModelResult } from '@app/modules/agent/agent.types';
+import { AppLogger } from '@app/shared/logging/logger';
+
+const logger = new AppLogger('ModelClient');
 
 @Injectable()
 export class ModelClient {
@@ -16,6 +19,7 @@ export class ModelClient {
 			this.configuration.get('APP_MODE') !== 'offline' &&
 			!this.configuration.get('OPENAI_API_KEY')
 		) {
+			logger.error('operation_rejected', { reason: 'MODEL_CONFIGURATION' });
 			throw new Error('MODEL_CONFIGURATION');
 		}
 	}
@@ -26,6 +30,7 @@ export class ModelClient {
 		}
 		const key = this.configuration.get('OPENAI_API_KEY');
 		if (!key) {
+			logger.error('operation_rejected', { reason: 'MODEL_CONFIGURATION' });
 			throw new Error('MODEL_CONFIGURATION');
 		}
 		const client = new OpenAI({
@@ -56,6 +61,7 @@ export class ModelClient {
 			},
 		};
 		if (Buffer.byteLength(JSON.stringify(request)) > LIMITS.requestBytes) {
+			logger.error('operation_rejected', { reason: 'BUDGET_EXHAUSTED' });
 			throw new Error('BUDGET_EXHAUSTED');
 		}
 		const response = await client.responses.create(request);

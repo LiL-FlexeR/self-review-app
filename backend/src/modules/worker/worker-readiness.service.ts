@@ -3,6 +3,9 @@ import type { OnApplicationBootstrap, OnApplicationShutdown } from '@nestjs/comm
 import { rmSync, writeFileSync } from 'node:fs';
 import { DatabaseService } from '@app/shared/database/database.service';
 import { RedisService } from '@app/shared/redis/redis.service';
+import { AppLogger } from '@app/shared/logging/logger';
+
+const logger = new AppLogger('WorkerReadinessService');
 
 export const WORKER_READY_FILE = '/tmp/self-review-worker-ready';
 
@@ -20,7 +23,7 @@ export class WorkerReadinessService implements OnApplicationBootstrap, OnApplica
 		await this.redis.client.ping();
 		writeFileSync(WORKER_READY_FILE, 'ready');
 		this.alive = setInterval(() => {}, 60000);
-		console.info('Foundation worker ready; no job processors in S01');
+		logger.info('worker_ready');
 	}
 
 	onApplicationShutdown() {

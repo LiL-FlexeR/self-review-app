@@ -1,5 +1,26 @@
 import type OpenAI from 'openai';
 import type { TSource, TClaim } from '@self-review/contracts';
+
+export type TEvidenceValidationReason =
+	| 'EMPTY_QUOTE'
+	| 'EMPTY_SOURCE'
+	| 'SOURCE_NOT_EXPOSED'
+	| 'QUOTE_NOT_FOUND'
+	| 'REDUCER_EVIDENCE_NOT_IN_CHILD'
+	| 'TASK_STATE_NOT_RESULT'
+	| 'METADATA_ONLY_RESULT'
+	| 'MEASUREMENT_WITHOUT_DIGITS';
+
+export interface IEvidenceValidationFailure {
+	reason: TEvidenceValidationReason;
+	claimIndex: number;
+	evidenceIndex?: number;
+	sourceId?: string;
+	quote?: string;
+	sourceKind?: TSource['kind'];
+	sourceState?: string;
+}
+
 export interface IModelInput {
 	history: OpenAI.Responses.ResponseInput;
 	forcedTool?: string;

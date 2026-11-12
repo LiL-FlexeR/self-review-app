@@ -51,6 +51,7 @@ backend/
       redis/         # DI-managed Redis connection
       mail/          # DI-managed SMTP transport
       clock/         # overridable application clock
+      logging/       # Winston output, Nest adapter, async context and diagnostic serialization
     app.ts           # API construction and runtime boundaries
     main.ts          # HTTP API
     worker.ts        # application context and BullMQ worker
@@ -118,6 +119,14 @@ On a protected request's ACCESS_EXPIRED/ACCESS_MISSING response, coordinate one 
 Replay the protected request at most once only if recovery confirms the same user and AuthSession. For a job-start POST, preserve the exact body and idempotencyKey; the initial authentication 401 must occur before business effects. All business mutations, including replays, hold the same origin-wide authentication lock from the identity recheck through the HTTP response so another tab cannot switch cookies between the check and submission. Recovery reuses an already-held lock without nesting lock acquisition. Do not automatically replay after network errors/5xx or retry the refresh POST. Refresh endpoints never enter their own recovery handler. A definitive refresh 401 ends local authentication; an infrastructure failure shows a retryable error instead of falsely claiming expiry. An EventSource error uses this recovery path before reconnecting; event-stream loss never restarts a job.
 
 On logout, absolute authentication expiry, refresh revocation, or user/session change, cancel pending reads, close event streams, and clear query/auth state before displaying another account. HTTP reads consume cancellation signals, and late responses or queued replays cannot repopulate another user's view. Recheck the identity after acquiring the shared lock and before replay; never send an old account's queued mutation using another account's cookies. The query cache is not persisted to browser storage. Credential lifetimes, CSRF bootstrap, and revocation limits remain defined in [D04](../decisions/D04-auth-and-credentials.md#refresh-logout-and-csrf). [Web Locks](https://developer.mozilla.org/en-US/docs/Web/API/Web_Locks_API) provides same-origin cross-tab coordination; it does not replace database concurrency checks.
+
+## Server logging
+
+API and worker use one Winston JSON logger with timestamp, level, service, component context, and a stable event name. LOG_LEVEL selects error, warn, info (default), or debug. Console errors go to stderr; other enabled levels go to stdout. Nest logging passes through the same serializer. Initialization failures flush their log output before exit. Raw Error messages, provider response bodies, headers/cookies, prompts, and encrypted reasoning are not serialized. Error diagnostics retain known codes/statuses, repository source frames, and bounded schema paths/constraints.
+
+The server generates requestId and returns it in X-Request-Id and public error envelopes. AsyncLocalStorage carries that ID through HTTP handling and carries runId/batchId through worker and agent work, without adding credentials or extra content to BullMQ payloads. Rejected HTTP operations, explicit generic Error throws, catches, and Redis/BullMQ error callbacks emit structured diagnostics.
+
+At the user's explicit request, validation failure logs also include bounded claim/evidence objects and the compared saved source excerpt, kind/state, and truncation flag. Missing-source diagnostics list available source IDs; reducer failures show relevant child evidence; quote mismatches record whether whitespace-only normalization would match, without changing strict acceptance. These server logs contain task/result text. They stay separate from the compact owner-facing safe trace and SSE payloads. Credential values from server configuration and recognizable token/password forms are redacted from diagnostic text; unknown object fields are omitted. This exception applies to the selected validation context, not arbitrary tracker bodies or model history.
 
 ## Data
 
@@ -235,6 +244,7 @@ Email delivery is configured separately from APP_MODE: Mailpit is the default SM
 | SMTP_USER/PASSWORD/FROM | If required, backend only; local SMTP has no authentication |
 | APP_PORT | Optional Compose host port, default 3000; match APP_ORIGIN when overriding |
 | MAIL_DELIVERY | local for Mailpit UI hint, external for an ordinary inbox; independent of APP_MODE |
+| LOG_LEVEL | error, warn, info (default), or debug for API/worker JSON logs; see server logging above |
 | REDIS_PREFIX | Namespaces OTP/rate-limit keys; tests use a separate Redis DB and fixed prefix |
 | APP_ORIGIN | Browser-facing Origin allowlist: http://localhost:3000 for Compose, http://localhost:5173 for Vite dev; not the proxied backend Host |
 

@@ -5,6 +5,9 @@ import { SignJWT, jwtVerify } from 'jose';
 import { ConfigService } from '@app/shared/config/config.service';
 import { ClockService } from '@app/shared/clock/clock.service';
 import type { TAccess } from '@app/modules/auth/auth.types';
+import { AppLogger } from '@app/shared/logging/logger';
+
+const logger = new AppLogger('CryptoService');
 
 @Injectable()
 export class CryptoService {
@@ -117,11 +120,13 @@ export class CryptoService {
 				payload.amr[1] !== 'otp' ||
 				typeof payload.exp !== 'number'
 			) {
+				logger.error('operation_rejected', { reason: 'ACCESS_CLAIMS_INVALID' });
 				throw Error();
 			}
 
 			return { sub: payload.sub, sid: payload.sid, exp: payload.exp };
 		} catch (error) {
+			logger.error('access_token_verification_failed', { error });
 			const code =
 				(error as { code?: string }).code === 'ERR_JWT_EXPIRED'
 					? HTTP_ERROR_CODE.ACCESS_EXPIRED

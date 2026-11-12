@@ -1,10 +1,14 @@
 import { z as zod } from 'zod';
+import { AppLogger } from '@app/shared/logging/logger';
+
+const logger = new AppLogger('Configuration');
 
 const Schema = zod.object({
 	APP_ORIGIN: zod.url(),
 	OPENAI_API_KEY: zod.string().min(1).optional(),
 	OPENAI_MODEL: zod.literal('gpt-5.4-mini-2026-03-17').default('gpt-5.4-mini-2026-03-17'),
 	APP_MODE: zod.enum(['offline', 'demo', 'live']).default('offline'),
+	LOG_LEVEL: zod.enum(['error', 'warn', 'info', 'debug']).default('info'),
 	DATABASE_URL: zod.string().min(1),
 	REDIS_URL: zod.url(),
 	AUTH_SECRET: zod.string().min(32),
@@ -30,6 +34,7 @@ export function config(env: NodeJS.ProcessEnv = process.env): TConfig {
 	const parsed = Schema.safeParse(env);
 
 	if (!parsed.success) {
+		logger.error('configuration_invalid', { error: parsed.error });
 		throw new Error(
 			'Invalid runtime configuration: ' +
 				parsed.error.issues.map((issue) => issue.path.join('.')).join(', '),
@@ -47,6 +52,10 @@ export function config(env: NodeJS.ProcessEnv = process.env): TConfig {
 				['localhost', '127.0.0.1', '[::1]'].includes(origin.hostname)
 			))
 	) {
+		logger.error('configuration_invalid', {
+			reason: 'INVALID_APP_ORIGIN',
+			fields: ['APP_ORIGIN'],
+		});
 		throw new Error('APP_ORIGIN must be an HTTPS origin or a loopback HTTP origin');
 	}
 
@@ -63,6 +72,7 @@ export function config(env: NodeJS.ProcessEnv = process.env): TConfig {
 		key.equals(Buffer.from(configuration.AUTH_SECRET)) ||
 		key.equals(Buffer.from(configuration.JWT_SECRET))
 	) {
+		logger.error('configuration_invalid', { reason: 'INVALID_AUTH_SECRETS' });
 		throw new Error('Independent authentication/encryption secrets are required');
 	}
 

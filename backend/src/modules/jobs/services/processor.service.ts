@@ -22,6 +22,9 @@ import { AgentService } from '@app/modules/agent/services/agent.service';
 import { QueueService } from './queue.service.js';
 import { ReviewService } from './review.service.js';
 import type { JobRun, TaskSnapshot, CommentSnapshot, Prisma } from '@app/generated/prisma/client';
+import { AppLogger, withLogContext } from '@app/shared/logging/logger';
+
+const logger = new AppLogger('ProcessorService');
 
 type TTaskWithComments = TaskSnapshot & { comments: CommentSnapshot[] };
 
@@ -54,7 +57,10 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 				maxStalledCount: 0,
 			},
 		);
-		this.worker.on('error', () => {});
+		this.worker.on('error', (error) => logger.error('worker_queue_error', { error }));
+		this.worker.on('failed', (job, error) =>
+			logger.error('worker_job_failed', { error, runId: job?.data?.runId }),
+		);
 	}
 
 	async onApplicationShutdown() {
@@ -62,6 +68,10 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 	}
 
 	async execute(runId: string) {
+		return withLogContext({ runId }, () => this.executeRun(runId));
+	}
+
+	private async executeRun(runId: string) {
 		if (!(await this.claimRun(runId))) {
 			return;
 		}
@@ -76,6 +86,7 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 				await this.sync(run);
 			}
 		} catch (error) {
+			logger.error('run_execution_failed', { error });
 			await this.failRun(runId, error);
 		} finally {
 			clearInterval(timer);
@@ -111,7 +122,8 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 				where: { id: runId, state: 'running' },
 				data: { heartbeatAt: new Date() },
 			});
-		} catch {
+		} catch (error) {
+			logger.error('heartbeat_failed', { error, runId });
 			// Recovery detects the lost heartbeat when storage becomes available again.
 		}
 	}
@@ -166,7 +178,7 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 			where: { id: runId },
 			select: { id: true, type: true, state: true, stage: true, error: true, usage: true },
 		});
-		console.info(JSON.stringify({ event: 'run_terminal', run: terminal }));
+		logger.info('run_terminal', { runId, state: terminal?.state, stage: terminal?.stage });
 	}
 
 	private async beginUnit(runId: string, stage: string): Promise<void> {
@@ -179,6 +191,7 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 			},
 		});
 		if (!result.count) {
+			logger.error('operation_rejected', { reason: 'RUN_INTERRUPTED' });
 			throw new Error('RUN_INTERRUPTED');
 		}
 	}
@@ -225,6 +238,7 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 		while (cursor !== null) {
 			await this.beginUnit(runId, 'listing');
 			if (seen.has(cursor)) {
+				logger.error('operation_rejected', { reason: 'PAGINATION_LOOP' });
 				throw new Error('PAGINATION_LOOP');
 			}
 			seen.add(cursor);
@@ -313,7 +327,8 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 				}),
 			);
 			return true;
-		} catch {
+		} catch (error) {
+			logger.error('task_detail_failed', { error, runId, taskId: task.id });
 			await inRunningRun(db, runId, (transaction) =>
 				transaction.taskSnapshot.update({
 					where: { id: task.id },
@@ -379,7 +394,8 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 		try {
 			const details = await this.provider.details(externalProjectId, task.externalId);
 			return { refreshStatus: 'fresh', details, refreshFailed: false };
-		} catch {
+		} catch (error) {
+			logger.error('selected_task_refresh_failed', { error, taskId: task.id });
 			return { refreshStatus: 'stale', refreshFailed: true };
 		}
 	}
@@ -455,6 +471,7 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 			where: { syncRunId: runId, detailStatus: 'available' },
 		});
 		if (!available && (await db.taskSnapshot.count({ where: { syncRunId: runId } }))) {
+			logger.error('operation_rejected', { reason: 'INSUFFICIENT_DATA' });
 			throw new Error('INSUFFICIENT_DATA');
 		}
 		const importComplete =
@@ -521,6 +538,7 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 				},
 			});
 			if (!finalized.count) {
+				logger.error('operation_rejected', { reason: 'RUN_INTERRUPTED' });
 				throw new Error('RUN_INTERRUPTED');
 			}
 			await transaction.syncAnalysis.create({

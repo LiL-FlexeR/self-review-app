@@ -12,6 +12,11 @@ import { DatabaseService } from '@app/shared/database/database.service';
 import { RedisService } from '@app/shared/redis/redis.service';
 import { MailService } from '@app/shared/mail/mail.service';
 import { AppModule } from '@app/modules/app.module';
+import { randomUUID } from 'node:crypto';
+import { AppLogger, getLogContext, withLogContext } from '@app/shared/logging/logger';
+import { nestLogger } from '@app/shared/logging/nest-logger';
+
+const logger = new AppLogger('HttpApplication');
 
 export function configureHttpApplication(
 	app: INestApplication,
@@ -24,6 +29,11 @@ export function configureHttpApplication(
 	const server = app.getHttpAdapter().getInstance() as express.Express;
 
 	server.disable('x-powered-by');
+	server.use((_req, res, next) => {
+		const requestId = randomUUID();
+		res.setHeader('X-Request-Id', requestId);
+		withLogContext({ requestId }, next);
+	});
 	server.use((req, res, next) => {
 		res.setHeader('Cache-Control', 'no-store');
 		res.setHeader('X-Content-Type-Options', 'nosniff');
@@ -36,13 +46,14 @@ export function configureHttpApplication(
 		const origin = req.get('origin');
 
 		if (origin && origin !== configuration.APP_ORIGIN) {
+			logger.warn('http_origin_rejected', { status: 403, method: req.method });
 			res.status(403).json({
 				error: {
 					code: HTTP_ERROR_CODE.ORIGIN_INVALID,
 					message: HTTP_ERROR_MESSAGE.ORIGIN_INVALID,
 					retryable: false,
 				},
-				requestId: crypto.randomUUID(),
+				requestId: getLogContext()?.requestId ?? randomUUID(),
 			});
 
 			return;
@@ -57,7 +68,8 @@ export function configureHttpApplication(
 		try {
 			await Promise.all([db.$queryRaw`SELECT 1`, redis.ping(), mail.verify()]);
 			res.json({ status: 'ready' });
-		} catch {
+		} catch (error) {
+			logger.error('api_readiness_failed', { error });
 			res.status(503).json({ status: 'unavailable' });
 		}
 	});
@@ -84,7 +96,7 @@ export function configureHttpApplication(
 
 export async function createApp(): Promise<INestApplication> {
 	const app = await NestFactory.create(AppModule, new ExpressAdapter(), {
-		logger: false,
+		logger: nestLogger,
 		abortOnError: false,
 	});
 
@@ -93,6 +105,7 @@ export async function createApp(): Promise<INestApplication> {
 		await app.init();
 		return app;
 	} catch (error) {
+		logger.error('api_initialization_failed', { error });
 		await app.close();
 		throw error;
 	}

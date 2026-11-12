@@ -1,5 +1,8 @@
 import nodemailer from 'nodemailer';
 import type { TConfig } from '@app/shared/config/config.schema';
+import { AppLogger } from '@app/shared/logging/logger';
+
+const logger = new AppLogger('MailTransport');
 
 export interface IMail {
 	verify(): Promise<void>;
@@ -40,6 +43,7 @@ export function mail(configuration: TConfig): IMail {
 			});
 
 			if (!info.accepted?.length) {
+				logger.error('operation_rejected', { reason: 'SMTP_REJECTED' });
 				throw Error('SMTP rejected');
 			}
 		},

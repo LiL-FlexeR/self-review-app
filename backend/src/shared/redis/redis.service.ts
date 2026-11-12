@@ -2,6 +2,9 @@ import { Inject, Injectable } from '@nestjs/common';
 import type { OnApplicationShutdown, OnModuleInit } from '@nestjs/common';
 import { Redis } from 'ioredis';
 import { ConfigService } from '@app/shared/config/config.service';
+import { AppLogger } from '@app/shared/logging/logger';
+
+const logger = new AppLogger('RedisService');
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnApplicationShutdown {
@@ -14,8 +17,8 @@ export class RedisService implements OnModuleInit, OnApplicationShutdown {
 			lazyConnect: true,
 			connectTimeout: 3000,
 		});
-		this.client.on('error', () => {
-			// Raw infrastructure errors must not enter logs.
+		this.client.on('error', (error) => {
+			logger.error('redis_connection_failed', { error });
 		});
 	}
 

@@ -18,6 +18,9 @@ import { CryptoService } from '@app/modules/auth/services/crypto.service';
 import { JobsService } from '@app/modules/jobs/services/jobs.service';
 import { ProjectsService } from './projects.service.js';
 import { parse } from '@app/utils/http';
+import { AppLogger } from '@app/shared/logging/logger';
+
+const logger = new AppLogger('ProjectsController');
 
 @Controller('api')
 export class ProjectsController {
@@ -161,26 +164,29 @@ export class ProjectsController {
 			res.end();
 			return;
 		}
-		const timer = setInterval(() => {
+		const poll = async () => {
 			if (busy) {
 				return;
 			}
 			busy = true;
-			void this.jobs
-				.owned(identity.sub, runId)
-				.then((run) => this.jobs.view(run))
-				.then((state) => {
-					emit(state);
-					if (!['queued', 'running'].includes(state.state)) {
-						res.end();
-					} else if (++ticks % 15 === 0) {
-						res.write(': heartbeat\n\n');
-					}
-				})
-				.catch(() => res.end())
-				.finally(() => {
-					busy = false;
-				});
+			try {
+				const run = await this.jobs.owned(identity.sub, runId);
+				const state = await this.jobs.view(run);
+				emit(state);
+				if (!['queued', 'running'].includes(state.state)) {
+					res.end();
+				} else if (++ticks % 15 === 0) {
+					res.write(': heartbeat\n\n');
+				}
+			} catch (error) {
+				logger.warn('sse_poll_failed', { error, runId });
+				res.end();
+			} finally {
+				busy = false;
+			}
+		};
+		const timer = setInterval(() => {
+			void poll();
 		}, 1000);
 		const expiry = setTimeout(() => res.end(), Math.max(0, identity.exp * 1000 - Date.now()));
 		res.on('close', () => {

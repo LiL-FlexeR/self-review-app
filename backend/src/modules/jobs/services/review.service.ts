@@ -7,6 +7,9 @@ import { AgentService } from '@app/modules/agent/services/agent.service';
 import { SourcesService } from '@app/modules/agent/services/sources.service';
 import { json, markdown } from '@app/modules/agent/agent.utils';
 import { ConfigService } from '@app/shared/config/config.service';
+import { AppLogger } from '@app/shared/logging/logger';
+
+const logger = new AppLogger('ReviewService');
 
 @Injectable()
 export class ReviewService {
@@ -65,12 +68,14 @@ export class ReviewService {
 							},
 						});
 			if (!task || task.syncRunId !== source.id) {
+				logger.error('operation_rejected', { reason: 'INVALID_MODEL_OUTPUT' });
 				throw new Error('INVALID_MODEL_OUTPUT');
 			}
 			const found = (await this.sources.forTasks([task.id])).find(
 				(item) => item.id === sourceId,
 			);
 			if (!found) {
+				logger.error('operation_rejected', { reason: 'INVALID_MODEL_OUTPUT' });
 				throw new Error('INVALID_MODEL_OUTPUT');
 			}
 			registry.push(found);
@@ -92,6 +97,7 @@ export class ReviewService {
 				},
 			});
 			if (!claimed.count) {
+				logger.error('operation_rejected', { reason: 'RUN_INTERRUPTED' });
 				throw new Error('RUN_INTERRUPTED');
 			}
 			const report = await transaction.reviewReport.create({

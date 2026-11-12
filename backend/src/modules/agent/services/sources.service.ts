@@ -41,7 +41,7 @@ export class SourcesService {
 					createdAt: comment.sourceCreatedAt?.toISOString() ?? null,
 					retrievedAt: comment.retrievedAt.toISOString(),
 				})),
-			];
+			].filter((item) => item.textExcerpt.trim().length > 0);
 		});
 	}
 }

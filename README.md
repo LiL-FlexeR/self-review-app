@@ -86,6 +86,16 @@ npm run lint
 
 `format` writes formatting; `format:check` and `lint` only check. Both checks are included in `npm run check`.
 
+## Server logs
+
+API and worker write Winston JSON logs. Read them with:
+
+```bash
+docker compose logs -f api worker
+```
+
+Set `LOG_LEVEL=info` (default), `warn`, `error`, or `debug` in the server `.env` and recreate API/worker to apply it. HTTP error logs share the response's `X-Request-Id`/`requestId`; worker/agent logs carry `runId`/`batchId`. An `evidence_validation_failed` event identifies the reason (for example `QUOTE_NOT_FOUND`) and includes the rejected claim/evidence, compared source excerpt, and comparison details. These server diagnostics contain task/result text with credential redaction. The public safe execution trace remains compact. Full behavior and boundaries: [server logging](docs/architecture/overview.md#server-logging).
+
 ## Verification
 
 ```bash
@@ -115,6 +125,8 @@ Manual S01 check: signup → Mailpit → OTP → protected shell → open a seco
 Generation uses the configured model and can incur new usage. Opening/exporting never generates. Partial-source review requires explicit acknowledgment; failed regeneration preserves the old valid report.
 
 For live-model verification, set `APP_MODE=demo` and `OPENAI_API_KEY` in the gitignored server `.env`, then recreate API/worker. The pinned model is `gpt-5.4-mini-2026-03-17`, reasoning `low`, with no fallback. Repeat Demo platform and Description evidence example; inspect actual comment choices and quotations. This live check remains unexecuted. Never put the key into a `VITE_` variable or a request body.
+
+For Docker with Vite, apply these environment changes with `APP_PORT=3001 APP_ORIGIN=http://localhost:5173 docker compose up -d --force-recreate --wait api worker`. Keep dependency startup enabled: `--no-deps` is appropriate only when Postgres, Redis, and Mailpit are already running and ready. OPENAI_MODEL must match the exact pinned snapshot above; other values fail configuration validation before startup.
 
 ## Example result
 

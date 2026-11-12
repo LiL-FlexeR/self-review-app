@@ -1,5 +1,8 @@
 import type { Prisma } from '@app/generated/prisma/client';
 import type { TDatabase } from '@app/shared/database/database';
+import { AppLogger } from '@app/shared/logging/logger';
+
+const logger = new AppLogger('RunningTransaction');
 
 export async function inRunningRun<TResult>(
 	database: TDatabase,
@@ -11,6 +14,7 @@ export async function inRunningRun<TResult>(
 			{ state: string }[]
 		>`SELECT state FROM job_runs WHERE id=${runId}::uuid FOR UPDATE`;
 		if (rows[0]?.state !== 'running') {
+			logger.error('operation_rejected', { reason: 'RUN_INTERRUPTED' });
 			throw new Error('RUN_INTERRUPTED');
 		}
 		return operation(transaction);

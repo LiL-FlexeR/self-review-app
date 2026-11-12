@@ -3,6 +3,9 @@ import type { OnModuleInit, OnApplicationShutdown } from '@nestjs/common';
 import { Queue } from 'bullmq';
 import { ConfigService } from '@app/shared/config/config.service';
 import { DatabaseService } from '@app/shared/database/database.service';
+import { AppLogger } from '@app/shared/logging/logger';
+
+const logger = new AppLogger('QueueService');
 
 @Injectable()
 export class QueueService implements OnModuleInit, OnApplicationShutdown {
@@ -17,13 +20,14 @@ export class QueueService implements OnModuleInit, OnApplicationShutdown {
 			prefix: configuration.get('REDIS_PREFIX') + 'jobs',
 			defaultJobOptions: { attempts: 1, removeOnComplete: 1000, removeOnFail: 1000 },
 		});
-		this.queue.on('error', () => {});
+		this.queue.on('error', (error) => logger.error('queue_connection_failed', { error }));
 	}
 
 	async enqueue(runId: string) {
 		try {
 			await this.queue.add('execute', { runId }, { jobId: runId });
-		} catch {
+		} catch (error) {
+			logger.error('enqueue_failed', { error, runId });
 			// An uncertain enqueue retains the durable command for reconciliation.
 			await this.database.client.jobRun.updateMany({
 				where: { id: runId, state: 'queued' },
@@ -80,13 +84,20 @@ export class QueueService implements OnModuleInit, OnApplicationShutdown {
 	}
 
 	async onModuleInit() {
-		await this.reconcile().catch(() => {
-			// Readiness and endpoint errors report unavailable storage; recovery retries later.
-		});
+		await this.reconcileSafely();
 		this.timer = setInterval(() => {
-			void this.reconcile().catch(() => {});
+			void this.reconcileSafely();
 		}, 30000);
 		this.timer.unref();
+	}
+
+	private async reconcileSafely(): Promise<void> {
+		try {
+			await this.reconcile();
+		} catch (error) {
+			// Readiness and endpoint errors report unavailable storage; recovery retries later.
+			logger.error('queue_reconciliation_failed', { error });
+		}
 	}
 
 	async onApplicationShutdown() {

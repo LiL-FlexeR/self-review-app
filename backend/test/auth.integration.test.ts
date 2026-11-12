@@ -1,4 +1,5 @@
-import { beforeAll, beforeEach, afterAll, describe, it, expect } from 'vitest';
+import { beforeAll, beforeEach, afterAll, describe, it, expect, vi } from 'vitest';
+import { AppLogger } from '@app/shared/logging/logger';
 import request from 'supertest';
 import { randomUUID } from 'node:crypto';
 import { mkdtemp, writeFile, rm } from 'node:fs/promises';
@@ -125,6 +126,34 @@ afterAll(async () => {
 });
 
 describe('HTTP password and OTP', () => {
+	it('correlates safe error logs, response headers and public request IDs', async () => {
+		const log = vi.spyOn(AppLogger.prototype, 'warn');
+		try {
+			const responses = await Promise.all(
+				Array.from({ length: 2 }, () =>
+					request(runtime.app.getHttpServer())
+						.get('/api/auth/me')
+						.set('X-Request-Id', 'untrusted-client-value'),
+				),
+			);
+			for (const response of responses) {
+				expect(response.status).toBe(401);
+				expect(response.body.requestId).toBe(response.headers['x-request-id']);
+				expect(log).toHaveBeenCalledWith(
+					'http_request_rejected',
+					expect.objectContaining({
+						requestId: response.body.requestId,
+						status: 401,
+						method: 'GET',
+					}),
+				);
+			}
+			expect(responses[0]!.body.requestId).not.toBe(responses[1]!.body.requestId);
+			expect(responses[0]!.body.requestId).not.toBe('untrusted-client-value');
+		} finally {
+			log.mockRestore();
+		}
+	});
 	it('does not create a user or tokens before OTP; strict input, Origin and browser binding', async () => {
 		expect(
 			(

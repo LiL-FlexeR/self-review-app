@@ -19,6 +19,11 @@ import type {
 	Prisma,
 } from '@app/generated/prisma/client';
 import { boundSources, excerpt, json, validateEvidence } from '@app/modules/agent/agent.utils';
+import { AppLogger, withLogContext } from '@app/shared/logging/logger';
+import { EvidenceValidationError } from '@app/modules/agent/evidence-validation.error';
+import { outputCorrection } from '@app/modules/agent/output-correction';
+
+const logger = new AppLogger('AgentService');
 
 @Injectable()
 export class AgentService {
@@ -155,6 +160,7 @@ export class AgentService {
 			where: { id: { in: childIds }, state: 'succeeded' },
 		});
 		if (children.length !== childIds.length) {
+			logger.error('operation_rejected', { reason: 'INVALID_MODEL_OUTPUT' });
 			throw new Error('INVALID_MODEL_OUTPUT');
 		}
 		const childClaims = childIds.flatMap((childId) => {
@@ -204,6 +210,11 @@ export class AgentService {
 				}),
 			);
 		} catch (error) {
+			logger.error('batch_execution_failed', {
+				error,
+				runId: batch.runId,
+				batchId: batch.id,
+			});
 			await db.analysisBatch.update({
 				where: { id: batch.id },
 				data: { state: 'failed' },
@@ -221,16 +232,22 @@ export class AgentService {
 		childClaims?: TClaim[],
 		report = false,
 	): Promise<TAnalysis | TReportDraft> {
-		const context = await this.prepareUnit({
-			runId,
-			batchId,
-			taskIds,
-			allowedIds,
-			research,
-			childClaims,
-			report,
-		});
-		const maximum = research ? LIMITS.attempts : 2;
+		return withLogContext({ runId, batchId }, () =>
+			this.executeUnit({
+				runId,
+				batchId,
+				taskIds,
+				allowedIds,
+				research,
+				childClaims,
+				report,
+			}),
+		);
+	}
+
+	private async executeUnit(options: IUnitOptions): Promise<TAnalysis | TReportDraft> {
+		const context = await this.prepareUnit(options);
+		const maximum = options.research ? LIMITS.attempts : 2;
 
 		for (let step = 0; step < maximum; step++) {
 			const attempt = await this.reserveModelAttempt(context);
@@ -241,6 +258,7 @@ export class AgentService {
 					return output;
 				}
 			} catch (error) {
+				logger.error('unit_attempt_failed', { error });
 				await this.recordFailedAttempt(context, attempt);
 				if (await this.retryTemporaryFailure(context, error, step + 1 < maximum)) {
 					continue;
@@ -249,6 +267,7 @@ export class AgentService {
 			}
 		}
 
+		logger.error('operation_rejected', { reason: 'INVALID_MODEL_OUTPUT' });
 		throw new Error('INVALID_MODEL_OUTPUT');
 	}
 
@@ -331,9 +350,11 @@ export class AgentService {
 
 	private async reserveModelAttempt(context: IUnitContext): Promise<ModelAttempt> {
 		if (Date.now() >= context.deadline) {
+			logger.error('operation_rejected', { reason: 'UNIT_TIMEOUT' });
 			throw new Error('UNIT_TIMEOUT');
 		}
 		if (context.usageTokens >= LIMITS.tokens) {
+			logger.error('operation_rejected', { reason: 'BUDGET_EXHAUSTED' });
 			throw new Error('BUDGET_EXHAUSTED');
 		}
 		const db = this.database.client;
@@ -342,6 +363,7 @@ export class AgentService {
 			select: { state: true },
 		});
 		if (active.state !== 'running') {
+			logger.error('operation_rejected', { reason: 'RUN_INTERRUPTED' });
 			throw new Error('RUN_INTERRUPTED');
 		}
 		const attemptNo = (await db.modelAttempt.count({ where: { runId: context.runId } })) + 1;
@@ -409,11 +431,13 @@ export class AgentService {
 				item.type !== 'function_call' &&
 				item.type !== 'reasoning'
 			) {
+				logger.error('operation_rejected', { reason: 'GUARDRAIL_VIOLATION' });
 				throw new Error('GUARDRAIL_VIOLATION');
 			}
 			context.history.push(item);
 		}
 		if (response.errorCode === 'MODEL_REFUSAL') {
+			logger.error('operation_rejected', { reason: 'MODEL_REFUSAL' });
 			throw new Error('MODEL_REFUSAL');
 		}
 		if (response.errorCode) {
@@ -434,6 +458,7 @@ export class AgentService {
 
 	private requestOutputCorrection(context: IUnitContext, message: string): void {
 		if (context.corrected) {
+			logger.error('operation_rejected', { reason: 'INVALID_MODEL_OUTPUT' });
 			throw new Error('INVALID_MODEL_OUTPUT');
 		}
 		context.corrected = true;
@@ -445,6 +470,7 @@ export class AgentService {
 		calls: OpenAI.Responses.ResponseFunctionToolCall[],
 	): Promise<void> {
 		if (calls.length !== 1 || !context.research || ++context.toolCount > LIMITS.tools) {
+			logger.error('operation_rejected', { reason: 'GUARDRAIL_VIOLATION' });
 			throw new Error('GUARDRAIL_VIOLATION');
 		}
 		const call = calls[0]!;
@@ -454,11 +480,13 @@ export class AgentService {
 				(context.mandatoryStage === 0 && call.name !== 'list_issues') ||
 				(context.mandatoryStage === 1 && call.name !== 'get_issue_details')
 			) {
+				logger.error('operation_rejected', { reason: 'GUARDRAIL_VIOLATION' });
 				throw new Error('GUARDRAIL_VIOLATION');
 			}
 			const args: unknown = JSON.parse(call.arguments);
 			result = await this.dispatchTool(context, call.name, args);
 		} catch (error) {
+			logger.error('tool_dispatch_failed', { error });
 			if (
 				error instanceof Error &&
 				['PROVIDER_READ_FAILED', 'RUN_INTERRUPTED'].includes(error.message)
@@ -466,6 +494,7 @@ export class AgentService {
 				throw error;
 			}
 			if (++context.violations > 1) {
+				logger.error('operation_rejected', { reason: 'GUARDRAIL_VIOLATION' });
 				throw new Error('GUARDRAIL_VIOLATION');
 			}
 			result = { error: 'GUARDRAIL_VIOLATION' };
@@ -502,6 +531,7 @@ export class AgentService {
 			case 'get_issue_comments':
 				return this.getIssueComments(context, args);
 			default:
+				logger.error('operation_rejected', { reason: 'GUARDRAIL_VIOLATION' });
 				throw new Error('GUARDRAIL_VIOLATION');
 		}
 	}
@@ -527,6 +557,7 @@ export class AgentService {
 			details.issueIds.length !== context.allowedIds.length ||
 			details.issueIds.some((issueId) => !context.allowedIds.includes(issueId))
 		) {
+			logger.error('operation_rejected', { reason: 'GUARDRAIL_VIOLATION' });
 			throw new Error('GUARDRAIL_VIOLATION');
 		}
 
@@ -536,6 +567,7 @@ export class AgentService {
 	private async getIssueComments(context: IUnitContext, args: unknown) {
 		const { issueId } = TOOL_SCHEMAS.get_issue_comments.parse(args);
 		if (!context.allowedIds.includes(issueId)) {
+			logger.error('operation_rejected', { reason: 'GUARDRAIL_VIOLATION' });
 			throw new Error('GUARDRAIL_VIOLATION');
 		}
 		const task = await this.database.client.taskSnapshot.findFirstOrThrow({
@@ -578,7 +610,8 @@ export class AgentService {
 		let comments: Awaited<ReturnType<FixtureService['comments']>>;
 		try {
 			comments = await this.provider.comments(task.externalId);
-		} catch {
+		} catch (error) {
+			logger.error('comment_refresh_failed', { error });
 			await inRunningRun(db, runId, (transaction) =>
 				transaction.taskSnapshot.update({
 					where: { id: task.id },
@@ -589,6 +622,7 @@ export class AgentService {
 					},
 				}),
 			);
+			logger.error('operation_rejected', { reason: 'PROVIDER_READ_FAILED' });
 			throw new Error('PROVIDER_READ_FAILED');
 		}
 		await inRunningRun(db, runId, async (transaction) => {
@@ -639,6 +673,7 @@ export class AgentService {
 		const encoded = JSON.stringify(result);
 		context.dataBytes += Buffer.byteLength(encoded);
 		if (context.dataBytes > LIMITS.dataBytes) {
+			logger.error('operation_rejected', { reason: 'BUDGET_EXHAUSTED' });
 			throw new Error('BUDGET_EXHAUSTED');
 		}
 
@@ -651,6 +686,7 @@ export class AgentService {
 	): Promise<TAnalysis | TReportDraft | undefined> {
 		try {
 			if (response.errorCode || (context.research && context.mandatoryStage < 2)) {
+				logger.error('operation_rejected', { reason: 'INVALID_MODEL_OUTPUT' });
 				throw new Error('INVALID_MODEL_OUTPUT');
 			}
 			const output = (context.report ? ReportDraft : Analysis).parse(
@@ -658,28 +694,32 @@ export class AgentService {
 			);
 			validateEvidence(output, [...context.exposed.values()], context.childClaims);
 			if (Buffer.byteLength(JSON.stringify(output)) > 12288) {
+				logger.error('operation_rejected', { reason: 'INVALID_MODEL_OUTPUT' });
 				throw new Error('INVALID_MODEL_OUTPUT');
 			}
 			await this.database.client.analysisBatch.update({
 				where: { id: context.batchId },
 				data: { trace: json(context.trace.slice(0, 100)) },
 			});
-			console.info(
-				JSON.stringify({
-					event: 'unit_completed',
-					runId: context.runId,
-					batchId: context.batchId,
-					events: context.trace.slice(0, 100),
-				}),
-			);
+			logger.info('unit_completed', { count: context.trace.length });
 
 			return output;
-		} catch {
-			context.trace.push({ event: 'validation_failed', errorCode: 'INVALID_MODEL_OUTPUT' });
-			this.requestOutputCorrection(
-				context,
-				'INVALID_MODEL_OUTPUT: return schema-valid JSON with exact supplied evidence and permitted task states; retain the requested schema.',
-			);
+		} catch (error) {
+			let reason = 'RESULT_VALIDATION_FAILED';
+			if (error instanceof EvidenceValidationError) {
+				reason = error.details.reason;
+			} else if (error instanceof zod.ZodError) {
+				reason = 'SCHEMA_INVALID';
+			} else if (error instanceof SyntaxError) {
+				reason = 'JSON_INVALID';
+			}
+			logger.error('unit_validation_failed', { error, reason });
+			context.trace.push({
+				event: 'validation_failed',
+				errorCode: 'INVALID_MODEL_OUTPUT',
+				reason,
+			});
+			this.requestOutputCorrection(context, outputCorrection(error));
 		}
 	}
 

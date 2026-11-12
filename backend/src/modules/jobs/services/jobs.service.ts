@@ -14,6 +14,9 @@ import type { JobRun, Prisma } from '@app/generated/prisma/client';
 import { DatabaseService } from '@app/shared/database/database.service';
 import { QueueService } from './queue.service.js';
 import { json } from '@app/modules/agent/agent.utils';
+import { AppLogger } from '@app/shared/logging/logger';
+
+const logger = new AppLogger('JobsService');
 
 @Injectable()
 export class JobsService {
@@ -219,6 +222,7 @@ export class JobsService {
 		try {
 			return await this.acceptRun(request);
 		} catch (error) {
+			logger.error('job_acceptance_failed', { error });
 			if (!(error instanceof Error && 'code' in error && error.code === 'P2002')) {
 				throw error;
 			}

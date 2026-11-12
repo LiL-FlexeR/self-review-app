@@ -18,6 +18,9 @@ import { CryptoService } from './crypto.service.js';
 import { PasswordHashService } from './password-hash.service.js';
 import { ACCESS, REFRESH, PREAUTH } from '@app/modules/auth/auth.constants';
 import type { TPending } from '@app/modules/auth/auth.types';
+import { AppLogger } from '@app/shared/logging/logger';
+
+const logger = new AppLogger('AuthService');
 
 @Injectable()
 export class AuthService {
@@ -194,6 +197,7 @@ export class AuthService {
 				return { user, session };
 			});
 		} catch (error) {
+			logger.error('signup_persistence_failed', { error });
 			if ((error as { code?: string }).code === 'P2002') {
 				throw new ConflictException({
 					code: HTTP_ERROR_CODE.SIGNUP_UNAVAILABLE,
@@ -324,6 +328,7 @@ export class AuthService {
 			});
 
 			if (consumed.count !== 1) {
+				logger.error('operation_rejected', { reason: 'REFRESH_CONSUMPTION_FAILED' });
 				throw Error('Conditional consumption failed');
 			}
 
@@ -365,6 +370,7 @@ export class AuthService {
 			try {
 				sid = (await this.access(req)).sid;
 			} catch (error) {
+				logger.error('logout_access_unavailable', { error });
 				if (!(error instanceof UnauthorizedException)) {
 					throw error;
 				}

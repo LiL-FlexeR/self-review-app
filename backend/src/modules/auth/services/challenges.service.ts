@@ -17,6 +17,9 @@ import { MailService } from '@app/shared/mail/mail.service';
 import type { IMail } from '@app/shared/mail/mail';
 import { CryptoService } from './crypto.service.js';
 import type { TPending } from '@app/modules/auth/auth.types';
+import { AppLogger } from '@app/shared/logging/logger';
+
+const logger = new AppLogger('ChallengesService');
 
 type TStored = TPending & {
 	binding: string;
@@ -198,7 +201,8 @@ export class ChallengesService {
 
 		try {
 			await this.mail.send(challenge.email, code);
-		} catch {
+		} catch (error) {
+			logger.error('otp_delivery_failed', { error });
 			await this.redis.del(this.key(id));
 			throw new BadGatewayException({
 				code: HTTP_ERROR_CODE.MAIL_DELIVERY_FAILED,
@@ -269,6 +273,7 @@ export class ChallengesService {
 			const failureCode = OTP_FAILURE_CODE[result[0]!];
 
 			if (!failureCode) {
+				logger.error('operation_rejected', { reason: 'OTP_VERIFICATION_UNEXPECTED' });
 				throw Error('Unexpected OTP verification result');
 			}
 
