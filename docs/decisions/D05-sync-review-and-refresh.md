@@ -1,10 +1,10 @@
 # D05 — review after sync, selected tasks, and versions
 
-Date: 2026-11-10. The user requested optional self-review during sync, resync of selected tasks, and a Review button to create/replace the report. The subject was explicitly clarified: the owner of the task source token.
+Optional self-review after sync and a manual Review action share one process. The subject is the owner of the task-source token.
 
 ## Confirmation status
 
-Accepted as an architecture and product decision on 2026-11-11. Optional automatic review, a shared manual Review action, the confirmed token-owner subject, selected-task resync, and creating/replacing the current report follow the user's explicit requests. The user confirmed that automatic review is disabled by default. Immutable revisions and atomic report-pointer replacement are implementation defaults that preserve source provenance and the previous valid result. Acceptance does not mean implementation: sync/review behavior remains work in S02–S05.
+Accepted 2026-11-11. Optional automatic review, the manual Review action, the token-owner subject, selected refresh, and report replacement are confirmed. Immutable revisions and atomic report-pointer replacement preserve provenance and the previous valid result. [ROADMAP](../../ROADMAP.md) owns implementation status.
 
 ## Choice
 
@@ -18,7 +18,7 @@ Confirmed default: `generateReview=false`, matching the initially unchecked UI o
 
 Sync and review are two stages of one user workflow, with separate persisted JobRun/usage. After a succeeded sync, a review child is created automatically only when generateReview=true; otherwise no automatic review is created. The worker does not wait for the child while holding a slot. One ReviewService serves the child and the manual button; all tasks are processed in batches according to [D06](D06-all-period-tasks-and-batches.md), without a task count limit. Neither a new general-purpose report-writing tool nor a second research agent is needed.
 
-JobRun uses trigger=manual by default and trigger=automatic for the automatic review. Both review paths reference their saved source through sourceSyncRunId, with no separate parent relation. A partial unique index permits at most one automatic continuation per source across all states while allowing manual regeneration. Trigger is set by backend code rather than a client-supplied field; the database rejects unsupported trigger values and automatic sync jobs. This simplification was explicitly approved on 2026-11-11.
+JobRun uses trigger=manual by default and trigger=automatic for the automatic review. Both review paths reference their saved source through sourceSyncRunId, with no separate parent relation. A partial unique index permits at most one automatic continuation per source across all states while allowing manual regeneration. Trigger is set by backend code rather than a client-supplied field; the database rejects unsupported trigger values and automatic sync jobs.
 
 ## Subject and scope
 
@@ -38,4 +38,4 @@ The [product specification](../product/overview.md#projects-and-snapshots) defin
 
 ## Consequences
 
-The full workflow can start with one action while retaining manual control. The cost is child-job continuation, token-owner identity, provenance for a snapshot with mixed freshness, and report versions. This expands scope and does not restore a validated five-hour estimate.
+The full workflow can start with one action while retaining manual control. The cost is child-job continuation, token-owner identity, provenance for a snapshot with mixed freshness, and report versions. Effort constraints are maintained in the [ROADMAP](../../ROADMAP.md#budget).

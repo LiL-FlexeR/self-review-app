@@ -58,7 +58,11 @@ src/
 
 ## shadcn/ui additions
 
-The pinned generator and origins are recorded in [D01](../decisions/D01-stack-and-local-runtime.md#s01-installation-record--2026-11-11). Keep `components.json` aliases aligned with this workspace. The generator emits conventional flat lowercase files; move each generated component into its `PascalCase/index.tsx` directory and update every generated import before committing it. Preserve theme adaptations and review the final diff. Do not retain parallel flat and directory implementations or assume the generator automatically understands this custom layout.
+Use shadcn CLI **4.23.0**, new-york style, neutral semantic variables, and Radix primitives with the committed `components.json`. Invoke this pinned generator for additions; it is a generation tool rather than a build dependency. Origins: [Button registry](https://ui.shadcn.com/r/styles/new-york/button.json), [Input registry](https://ui.shadcn.com/r/styles/new-york/input.json), [Sidebar and its dependencies](https://ui.shadcn.com/docs/components/sidebar), and [Vite setup](https://ui.shadcn.com/docs/installation/vite).
+
+Keep `components.json` aliases aligned with this workspace. The generator emits conventional flat lowercase files; move each generated component into its `PascalCase/index.tsx` directory and update every generated import before committing it. Preserve theme adaptations and review the final diff. Do not retain parallel flat and directory implementations or assume the generator automatically understands this custom layout.
+
+Current adaptations use the shared input/button radii, reference title weights/elevation, teal fills for active navigation, a 260px sidebar, and mobile Sheet navigation at md/768px. The media-query adapter uses `useSyncExternalStore`, and Skeleton width is deterministic. Reuse existing helpers/primitives and review generated dependencies instead of retaining duplicate components or standalone `cn` packages.
 
 ## Tailwind and component styling
 

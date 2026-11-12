@@ -1,10 +1,10 @@
 # D02 — sources, API tokens, and selection
 
-Date: 2026-11-10. The user selected three sources with manually entered credentials instead of OAuth. This replaces the previous decision to use one Linear integration with a static server allowlist: access now depends on the connection owner and the token's permissions.
+Three sources use manually entered credentials. Access depends on the connection owner and the token's permissions.
 
 ## Confirmation status
 
-Accepted as an architecture and product decision on 2026-11-11. The user confirmed Linear, ClickUp, and Jira Cloud with personal API credentials; one ClickUp List as the sync unit; Jira Cloud email, scoped API token, and cloudId; all statuses and a createdAt period interpreted in fixed UTC without a task-count cap; and the confirmed token owner as the review subject. Acceptance does not mean the adapters are implemented or verified: integration checks remain work in S03/S04.
+Accepted 2026-11-11. Personal credentials for Linear, ClickUp, and Jira Cloud are selected; provider-specific connection and normalization requirements are defined below. [ROADMAP](../../ROADMAP.md) owns implementation status.
 
 ## Connection
 

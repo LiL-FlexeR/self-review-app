@@ -1,6 +1,6 @@
 # Architecture
 
-Target design for the complete workflow. S01 now supplies workspaces, schema, authentication, and the protected UI shell; source adapters, queue execution, snapshots/SSE, and review remain later-stage work. Alternatives and dated version research: [D01](../decisions/D01-stack-and-local-runtime.md). Authentication and credentials: [D04](../decisions/D04-auth-and-credentials.md).
+Design of the complete workflow. [ROADMAP](../../ROADMAP.md) owns implementation status and verification. Stack choices and compatibility constraints: [D01](../decisions/D01-stack-and-local-runtime.md). Authentication and credentials: [D04](../decisions/D04-auth-and-credentials.md).
 
 ## Components
 
@@ -85,11 +85,11 @@ Do not add a second monorepo tool on top of npm. The provider interface normaliz
 
 ## Backend dependency injection
 
-Nest owns the backend application dependency graph. AppModule, AuthModule, ConfigModule, InfrastructureModule, and WorkerModule use static module metadata. ConfigModule lives beside ConfigService in `shared/config/`; InfrastructureModule lives in `shared/infrastructure/`. Root and feature modules remain under `modules/`. AuthModule imports ConfigModule/InfrastructureModule and registers AuthService, ChallengesService, CryptoService, PasswordHashService, and AuthController. The API bootstrap creates AppModule and configures HTTP middleware/static routing; it does not create application services or pass an already-constructed AuthService through `register()`. The global SafeErrorsFilter is registered through `APP_FILTER` in AppModule. Expected HTTP failures use the standard Nest exception classes with explicit public `{code,message,retryable}` payloads. The filter validates these payloads against the contracts error schema and adds requestId; unstructured HttpExceptions keep their status with a generic HTTP_ERROR body, while unknown infrastructure failures retain the safe retryable 503 response. Raw error bodies/causes are not forwarded. A custom Failure HTTP error class is not used. WorkerModule imports JobsModule and the same infrastructure module, starts ProcessorService with concurrency=1/maxStalledCount=0, and owns its readiness provider. JobsModule wires queue/reconciliation, scoped jobs, the shared ReviewService, AgentService, SourcesService, the fixture provider, and ModelClient; ProjectsModule exposes authenticated HTTP/SSE resources.
+Nest owns the backend application dependency graph. AppModule, AuthModule, ConfigModule, InfrastructureModule, and WorkerModule use static module metadata. ConfigModule lives beside ConfigService in `shared/config/`; InfrastructureModule lives in `shared/infrastructure/`. Root and feature modules remain under `modules/`. AuthModule imports ConfigModule/InfrastructureModule and registers AuthService, ChallengesService, CryptoService, PasswordHashService, and AuthController. The API bootstrap creates AppModule and configures HTTP middleware/static routing; it does not create application services or pass an already-constructed AuthService through `register()`. The global SafeErrorsFilter is registered through `APP_FILTER` in AppModule. Expected HTTP failures use the standard Nest exception classes with explicit public `{code,message,retryable}` payloads. The filter validates these payloads against the contracts error schema and adds requestId; unstructured HttpExceptions keep their status with a generic HTTP_ERROR body, while unknown infrastructure failures retain the safe retryable 503 response. Raw error bodies/causes are not forwarded. WorkerModule imports JobsModule and the same infrastructure module, starts ProcessorService with concurrency=1/maxStalledCount=0, and owns its readiness provider. JobsModule wires queue/reconciliation, scoped jobs, the shared ReviewService, AgentService, SourcesService, the fixture provider, and ModelClient; ProjectsModule exposes authenticated HTTP/SSE resources.
 
 The custom ConfigService in `backend/src/shared/config/config.service.ts` reads and validates the existing environment once per application context, using the existing Zod schema and independent-secret checks in `config.schema.ts`. It exposes immutable validated values and a typed getter. Node's existing `--env-file`/Compose environment handling remains the source of environment loading; no additional configuration package or alternate validation policy is introduced.
 
-InfrastructureModule exports injectable DatabaseService, RedisService, MailService, and ClockService. Database and Redis connections initialize through `onModuleInit` before application readiness. Mail transport is owned by MailService. Each process/context closes its owned database, Redis, and mail resources through `onApplicationShutdown`; explicit `app.close()` and the entrypoints' enabled shutdown hooks use the same lifecycle. PasswordHashService prepares its dummy Argon2 hash in `onModuleInit` and owns Argon2 operations with the existing process-local concurrency limit. CryptoService injects ConfigService/ClockService and owns access-JWT/CSRF operations plus the auth module’s token, SHA-256, HMAC, and comparison helpers. AuthService coordinates authentication through these providers; callers do not pass secrets or signing/verification timestamps to CryptoService. The foundation worker publishes its readiness file only after initialization and successful database/Redis probes, and removes it on shutdown. S02 adds the queue processor after these infrastructure checks.
+InfrastructureModule exports injectable DatabaseService, RedisService, MailService, and ClockService. Database and Redis connections initialize through `onModuleInit` before application readiness. Mail transport is owned by MailService. Each process/context closes its owned database, Redis, and mail resources through `onApplicationShutdown`; explicit `app.close()` and the entrypoints' enabled shutdown hooks use the same lifecycle. PasswordHashService prepares its dummy Argon2 hash in `onModuleInit` and owns Argon2 operations with the existing process-local concurrency limit. CryptoService injects ConfigService/ClockService and owns access-JWT/CSRF operations plus the auth module’s token, SHA-256, HMAC, and comparison helpers. AuthService coordinates authentication through these providers; callers do not pass secrets or signing/verification timestamps to CryptoService. The worker publishes its readiness file only after initialization and successful database/Redis probes, starts queue processing after these checks, and removes the marker on shutdown.
 
 HTTP routes, cookie/CSRF rules, token lifetimes, and public payloads remain governed by their existing specifications. Production initialization has no test-specific dependency options. Integration setup imports the same AppModule through Nest's testing module and overrides configuration, mail, clock, or storage providers as needed; child failure-case contexts borrow existing storage clients without taking ownership of their shutdown. Controlled-clock and transport substitutions remain labeled test boundaries.
 
@@ -103,9 +103,9 @@ Nest serves index.html for client-page navigation and deep-link reloads. The SPA
 
 shadcn/ui provides the component starting points, Tailwind CSS supplies utility styles through its Vite integration, and a global stylesheet defines semantic theme variables. Initialize shadcn/ui in the existing frontend workspace; component source stays in frontend/src/components/ui, with frontend/components.json and aliases configured for the client SPA.
 
-AppShell composes the shadcn Sidebar provider/navigation/inset, including its Sheet-based mobile presentation; AppSidebar owns only application links and account actions. AuthPanel composes Card for shared authentication/recovery pages, and forms/statuses reuse Label/Input/Button/Alert. Component layout and responsive styles use Tailwind classes; globals.css owns tokens, semantic mappings, and base rules under the [frontend styling guide](../codestyle/frontend.md#tailwind-and-component-styling). Mobile navigation uses the Sidebar's md/768px breakpoint; close/focus/overflow behavior must be manually verified at an actual narrow viewport rather than inferred from a build.
+AppShell composes the shadcn Sidebar provider/navigation/inset, including its Sheet-based mobile presentation; AppSidebar owns only application links and account actions. AuthPanel composes Card for shared authentication/recovery pages, and forms/statuses reuse Label/Input/Button/Alert. Component layout and responsive styles use Tailwind classes; globals.css owns tokens, semantic mappings, and base rules under the [frontend styling guide](../codestyle/frontend.md#tailwind-and-component-styling). Task details and selected-refresh confirmation reuse Sheet; the task table scrolls inside the reference's 900px reading column. Mobile navigation uses the Sidebar's md/768px breakpoint; close/focus/overflow behavior must be manually verified at an actual narrow viewport rather than inferred from a build.
 
-Screens and interactions follow [UX.md](../design/UX.md); appearance and theme integration use all required [frontend design inputs](../stages/README.md#frontend-design-inputs). Add components needed by the planned screens and commit their source and dependency lockfile. S01 records the CLI version, preset/primitive family, component origins, and material reference adaptations so later additions use a consistent setup. Source updates require review alongside package updates; composed screens still need the accessibility checks defined in [UX.md](../design/UX.md#shared-states-and-accessibility).
+Screens and interactions follow [UX.md](../design/UX.md); appearance and theme integration use all required [frontend design inputs](../stages/README.md#frontend-design-inputs). Add components needed by the planned screens and commit their source and dependency lockfile. The [frontend guide](../codestyle/frontend.md#shadcnui-additions) owns the generator settings, source origins, and current theme adaptations. Source updates require review alongside package updates; composed screens still need the accessibility checks defined in [UX.md](../design/UX.md#shared-states-and-accessibility).
 
 ## Frontend data flow
 
@@ -174,7 +174,7 @@ The Prisma schema in backend/prisma describes persistent tables and relations. Z
 
 ## API
 
-Zod is the source of input/output schemas and TS types. Model and external-response schemas are validated separately. Unknown input fields are rejected; Swagger UI is optional. All business endpoints require completed OTP authentication; unsafe methods also require CSRF/Origin checks.
+`contracts/src/workflow.ts` owns public workflow commands, resource views, report/source shapes, and paginated envelopes. Zod is the source of input/output schemas and TS types. Model and external-response schemas are validated separately. Unknown input fields are rejected; Swagger UI is optional. All business endpoints require completed OTP authentication; unsafe methods also require CSRF/Origin checks.
 
 | Endpoint | Purpose |
 | --- | --- |
@@ -189,7 +189,7 @@ Zod is the source of input/output schemas and TS types. Model and external-respo
 | GET/POST /api/connections | Own connections only; POST accepts write-only credentials and verifies access |
 | PUT/DELETE /api/connections/:id | Replace credentials / confirmed deletion of local data |
 | GET /api/connections/:id/projects?cursor=... | Paginate all accessible projects for this connection |
-| GET /api/projects/:id | Owned project metadata, connection/token-owner display, and saved/current-run references for direct navigation; no credentials |
+| GET /api/projects/:id | Owned project metadata, connection/token-owner display, latest successful sync independently of history pagination, and saved/current-run references; no credentials |
 | POST /api/projects/:id/syncs | {selection,generateReview?:boolean,idempotencyKey} → 202 {runId,state,eventsUrl}; period or tasks selection as defined in sync workflow |
 | GET /api/jobs/:id; GET /api/jobs/:id/events | Persisted state, import/analysis flags, and authenticated SSE |
 | GET /api/jobs/:id/batches; GET /api/jobs/:id/trace | Paginated units/trace for the owner only; no huge response containing the entire project |
@@ -200,6 +200,8 @@ Zod is the source of input/output schemas and TS types. Model and external-respo
 | GET /api/reviews/:id | Validated JSON, Markdown, sources, limitations, usage, and trace |
 | GET /api/health | Liveness without secrets; remains available during dependency outages |
 | GET /api/health/ready | Checks Postgres, Redis, and SMTP connectivity/authentication from API; 200 when ready, safe 503 otherwise; sends no email |
+
+History, tasks, batches, and traces are paginated. Snapshot deep links fetch their owned JobRun explicitly. Report responses include selection, subject coverage, creation time, usage, and the saved trace URL.
 
 The public Review request field is syncRunId. After validating ownership and type=sync, the server maps it to JobRun.sourceSyncRunId and ReviewReport.sourceSyncRunId; a client-supplied sourceSyncRunId is rejected as an unknown input field. The response runId identifies the new review execution, not its source sync.
 
@@ -240,7 +242,7 @@ Keep the root .env outside Git. Do not use VITE_ for secrets or inject them into
 
 ## Commands
 
-These scripts exist from S01. Integration coverage exercises authentication/storage plus S02 fixture queue/agent/snapshot/review execution. Live tracker adapters remain later-stage work.
+Commands use the root npm workspaces and isolated integration infrastructure. Latest execution results are recorded in the [ROADMAP](../../ROADMAP.md#current-verification).
 
 | Command | Purpose |
 | --- | --- |
@@ -251,19 +253,9 @@ These scripts exist from S01. Integration coverage exercises authentication/stor
 | npm run db:migrate:dev | Develop migrations using the local development DB only |
 | npm run db:migrate:test | Apply migrations to an isolated test DB |
 | npm run dev | Build contracts + backend API/worker watch + frontend Vite; mode from .env |
-| npm run check | Typecheck all workspaces, lint, Prisma schema validation |
+| npm run check | Formatting, workspace types, lint, Prisma schema and design-token validation |
 | npm run test:unit | Vitest without external accounts |
 | npm run test:integration | Supertest + isolated real Postgres/Redis/BullMQ; SMTP and external model/provider boundaries are synthetic |
 | npm run build | Prisma generate in backend, contracts → backend (API/worker) → frontend |
 
 Choose Node Debian slim for Docker to avoid Alpine/native dependency complications. Prisma 7 uses the pg driver adapter; pin its package consistently with the Prisma CLI/client in S01. Vitest/SWC must preserve Nest decorator metadata; test transformation does not replace typechecking.
-
-## S02 implementation notes
-
-`contracts/src/workflow.ts` owns public commands, resource views, report/source shapes, and paginated envelopes. Project metadata includes the latest successful sync independently of the first history page. Snapshot history, tasks, batches, and safe traces are paginated; selected snapshot deep links fetch their owned JobRun explicitly. Report responses include selection, subject coverage, creation time, usage, and the saved trace URL.
-
-Fixture projects are created explicitly for the signed-in account, with Anna (`demo-anna`) as the confirmed synthetic token owner. `demo-platform` supplies the example, `demo-137` traverses nine source pages, and `demo-evidence` supplies sufficient description evidence. No live tracker or hidden fixture fallback is implemented. Fixture source URLs are null; citations open saved quotations.
-
-Agent units preserve Responses output items/call IDs in worker memory, force list/details before optional comments, validate exposed exact quotations, and reserve ModelAttempt records before requests. Review leaves and reducers use ReportDraft; sync uses BatchAnalysis. Every leaf and shrinking reduction node is persisted. Offline attempts have unknown/scripted usage; real known token subsets are aggregated once, with tariff estimates kept separate. SDK logging and automatic retries are disabled. Bounded temporary retries belong to the application loop.
-
-The task table scrolls within the reference's 900px reading column. Task details and selected-refresh confirmation reuse the existing Sheet. This is the S02 layout adaptation; keyboard/focus, narrow layouts, and rendered visual appearance remain unverified because no browser surface was available in the implementation session.

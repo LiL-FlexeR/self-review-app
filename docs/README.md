@@ -1,6 +1,6 @@
 # Documentation
 
-Architecture, implementation stages, and code-style guidance following the workflow clarifications. Current implementation status and actual verification are maintained in [ROADMAP](../ROADMAP.md).
+Specifications, implementation stages, and maintenance guidance. Current implementation status and actual verification are maintained in [ROADMAP](../ROADMAP.md).
 
 ## Navigation and authoritative specifications
 
@@ -22,6 +22,8 @@ Architecture, implementation stages, and code-style guidance following the workf
 | [Contracts code style](codestyle/contracts.md) | Public schema/type files and exports |
 
 Do not duplicate normative tables across documents: link to the specification that owns the rule. Short explanations in the README and stage tasks do not replace the specifications.
+
+Follow [documentation maintenance](../AGENTS.md#documentation-maintenance): update current sections in place, keep verification/status in ROADMAP, and task-level history in Git and PR descriptions.
 
 ## Decisions
 
@@ -52,7 +54,3 @@ Project choices made in chat include email/password + OTP, personal API tokens, 
 | Real-world usage, realistic teams, and production prerequisites | [README](../README.md#limitations-and-business-status) | S06 |
 
 This matrix records specification coverage, not completed functionality. Product thinking, engineering quality, reliability, clarity, and practicality must ultimately be assessed from working code, tests, and demonstration evidence.
-
-OAuth is used neither for login nor for trackers. Password and OTP authentication is required in local demo/offline too. Synchronization does not filter by developer; self-review describes the confirmed token owner of the selected connection. It runs automatically through generateReview or manually through Review. Manual resync refreshes selected tasks, while review uses the entire resulting snapshot for its subject.
-
-The document organization is inspired by Career Evidence; the code and architecture are independent. Current delivery status is maintained only in the roadmap.

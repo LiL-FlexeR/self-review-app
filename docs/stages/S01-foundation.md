@@ -1,4 +1,4 @@
-# S01 — infrastructure, schema, and login [Done]
+# S01 — infrastructure, schema, and login
 
 ## Goal and dependencies
 
@@ -45,7 +45,3 @@ docker compose up --build
 ```
 
 Run signup → Mailpit email → OTP → protected page → access renewal → logout → login/password/OTP again. Check the old code and direct access before verify. Confirm two same-origin tabs do not race automatic refresh and do not retain the previous account's cached data. Record the tested browser/version and actual results without secret values; verify expiry automatically with a controlled test clock rather than changing the agreed default lifetimes.
-
-## Implementation evidence
-
-Completed on 2026-11-11 at the user's explicit request after the user confirmed that the application works and port 3000 is working. The assistant's tool-limited narrow-screen Sidebar/Sheet check remains recorded as unverified. Actual verification outcomes, current status, and measured work time are recorded in the [ROADMAP](../../ROADMAP.md#s01-implementation-and-verification--2026-11-11); theme adaptations are recorded in [D01](../decisions/D01-stack-and-local-runtime.md#s01-installation-record--2026-11-11).

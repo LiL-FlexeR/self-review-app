@@ -1,10 +1,10 @@
 # D03 — bounded agent and snapshot-based self-review
 
-Date: 2026-11-10. Updated for background synchronization, task browsing, and a shared review stage triggered automatically after sync or by a button.
+Background research saves task evidence; a shared self-review stage runs automatically after sync or through the Review button.
 
 ## Confirmation status
 
-Accepted as an architecture decision on 2026-11-11. The user confirmed a custom orchestrator over the official OpenAI TypeScript SDK and Responses API, using gpt-5.4-mini-2026-03-17 with reasoning effort low throughout sync analysis, reduction, and self-review. The sync → saved tasks → self-review flow and the optional automatic review have also been agreed. S02 now implements the custom orchestrator, pinned SDK transport, scoped tools, structured validation, attempt journal, and scripted offline path. The authenticated live-model smoke test remains unexecuted; see [ROADMAP](../../ROADMAP.md).
+Accepted 2026-11-11: a custom orchestrator over the official OpenAI TypeScript SDK and Responses API. The confirmed model configuration is defined under [Model and API](#model-and-api); [ROADMAP](../../ROADMAP.md) owns implementation and live verification status.
 
 ## Choice
 

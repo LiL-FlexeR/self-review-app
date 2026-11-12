@@ -8,4 +8,6 @@ These files were saved by `backend/test/workflow.integration.test.ts` after pass
 
 The example saves 6 project tasks, and Anna's report considers her 5 tasks. The scripted researcher requests comments for DEMO-101; the measurement remains qualified to staging, while started/planned work remains a task description. The separate description-evidence fixture does not request comments. These programmed choices do not establish real-model judgment. Test-generated UUIDs are synthetic execution identifiers and do not resolve against a user's local database.
 
+Fixture projects are created for the signed-in account with Anna (`demo-anna`) as the synthetic token owner: `demo-platform` supplies the main example, `demo-137` traverses nine source pages, and `demo-evidence` exercises description-only evidence. Fixture source URLs are null; citations open saved quotations.
+
 Regenerate through the isolated integration suite. Live OpenAI and manual browser verification remain outside this example's evidence; see [ROADMAP](../../ROADMAP.md).

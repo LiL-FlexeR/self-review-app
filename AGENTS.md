@@ -17,7 +17,7 @@ This file guides development of the application. Domain skills are instructions 
 | Components, data model, HTTP/SSE contracts, frontend data flow | [Architecture](docs/architecture/overview.md) |
 | Queue, idempotency, snapshots, SSE, report publication | [Sync workflow](docs/architecture/sync-workflow.md) |
 | AI tools, evidence, batching, budgets, traces | [Agent workflow](docs/architecture/agent-workflow.md) and [D03](docs/decisions/D03-bounded-agent.md) |
-| Stack and installation targets | [D01](docs/decisions/D01-stack-and-local-runtime.md) |
+| Stack and compatibility constraints | [D01](docs/decisions/D01-stack-and-local-runtime.md) |
 | Provider semantics and credentials | [D02](docs/decisions/D02-task-sources-and-selection.md) and [D04](docs/decisions/D04-auth-and-credentials.md) |
 | Screens, visual inputs, theme precedence | [Frontend design inputs](docs/stages/README.md#frontend-design-inputs) |
 | Verification and submission | [S05](docs/stages/S05-reliability-and-tests.md) and [S06](docs/stages/S06-submission.md) |
@@ -52,11 +52,19 @@ Project skills are stored in `.agents/skills/<name>/SKILL.md`. Paths in code spa
 
 ## Implementation and verification
 
-- Follow the npm-workspace layout in D01 and architecture: `backend`, `frontend`, and browser-safe `contracts`, with one root lockfile. Confirm current compatible package versions during installation and record the pinned results.
+- Follow the npm-workspace layout in D01 and architecture: `backend`, `frontend`, and browser-safe `contracts`, with one root lockfile. Confirm compatible package versions during installation and pin them in manifests/lockfile and container configuration.
 - Preserve the offline/demo/live distinction. Synthetic fixtures and scripted model output must stay labeled; they do not verify live tracker or OpenAI access.
 - Add boundary tests with the behavior being implemented. Follow the stage's required checks once tooling exists: `npm run check`, `npm run test:unit`, `npm run test:integration`, and `npm run build`. Prepare isolated test infrastructure/migrations as documented before integration checks.
 - Use real isolated Postgres/Redis for concurrency, recovery, and persistence checks. Stub only the designated external provider/model/mail boundaries; do not replace the workflow with a prepared report.
 - For frontend changes, read all five design inputs and record actual manual interaction/visual checks. Browser automation is outside the agreed MVP; HTTP integration and client unit tests provide automated coverage.
 - For documentation or skill-only changes, verify local links, validate changed skill frontmatter, and run `git diff --check`. Application startup/tests are needed only when the change affects executable behavior.
 - Keep secrets and private tracker content out of Git, fixtures, logs, model context, and job payloads. Use synthetic examples and safe error/trace fields.
-- Record actual implementation time and stage verification in ROADMAP. Mark a stage done only after its acceptance criteria pass. Report unavailable live checks and remaining limitations explicitly; do not record planned commands as successful execution.
+- Update the actual effort total and latest stage verification in ROADMAP in place. Mark a stage done only after its acceptance criteria pass. Report unavailable live checks and remaining limitations explicitly; do not record planned commands as successful execution.
+
+## Documentation maintenance
+
+- Keep documents as current references: rewrite the owning section when a rule changes and remove superseded text. Link to authoritative rules instead of copying them into README, stages, decisions, or skills.
+- Keep ROADMAP to the stage table, latest verification, open acceptance checks/limitations, and one cumulative effort total. Replace previous summaries; do not append dated task reports, refactoring notes, command transcripts, or intermediate budget calculations. Documentation-only work does not change application verification results.
+- Put task-level changes and executed checks in the response or PR description. Git retains edit history; do not create an archive/changelog merely to relocate removed work journals.
+- Keep decisions focused on the chosen approach, reasons, meaningful alternatives, and consequences. Preserve unique normative requirements in decisions that own them, particularly D02/D03/D04. Store exact dependency/image pins in executable configuration; document only compatibility constraints and generation settings needed for maintenance.
+- Keep stage briefs focused on scope and acceptance criteria, and README on usage/startup. Reference ROADMAP for delivery status and actual verification. Preserve unresolved limitations, security/concurrency invariants, and the offline/demo/live distinction when condensing text.

@@ -4,7 +4,7 @@ Date: 2026-11-10. Approved by the user: email + password, followed by an emailed
 
 ## Confirmation status
 
-Accepted as an architecture and product decision on 2026-11-11. Email/password followed by email OTP, manual tracker credentials, and local Mailpit with optional external SMTP are confirmed. The user selected JWT access tokens and rotating opaque refresh tokens in HttpOnly cookies, with refresh-token hashes in Postgres, and at most one live connection per provider per application user. A Jira connection covers one cloudId. Redis remains responsible for OTP challenges, rate limits, and the selected BullMQ backend, without an authentication-session store. Other security parameters below are implementation defaults; acceptance does not mean implementation or verification, which remain work in S01/S04/S05.
+Accepted 2026-11-11: email/password + OTP, JWT access and rotating opaque refresh cookies, Postgres refresh hashes, manual tracker credentials, and one live connection per provider/user (one cloudId for Jira). Redis handles OTP/rate limits and the queue. Other security parameters below are implementation defaults. [ROADMAP](../../ROADMAP.md) owns implementation and verification status.
 
 ## Options and choice
 
