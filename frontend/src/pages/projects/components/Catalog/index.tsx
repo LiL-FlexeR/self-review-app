@@ -67,7 +67,9 @@ export function Catalog({
 						</p>
 					</div>
 				))}
-				{catalog.isSuccess && items.length === 0 && <p>No accessible projects.</p>}
+				{catalog.isSuccess && items.length === 0 && !catalog.hasNextPage && !hasLoop && (
+					<p>No accessible projects.</p>
+				)}
 				{catalog.hasNextPage && (
 					<Button
 						variant="outline"

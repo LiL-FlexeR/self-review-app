@@ -7,7 +7,11 @@ import {
 } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { HTTP_ERROR_CODE, HTTP_ERROR_MESSAGE } from '@self-review/contracts';
-import type { TLinearConnectionCommand } from '@self-review/contracts';
+import { JiraCredentials, LinearCredentials } from '@self-review/contracts';
+import type { TLiveConnectionCommand, TTrackerCredentials } from '@self-review/contracts';
+import { parse } from '@app/utils/http';
+import { ClickUpService } from '@app/modules/providers/adapters/clickup/clickup.service';
+import { JiraService } from '@app/modules/providers/adapters/jira/jira.service';
 import { DatabaseService } from '@app/shared/database/database.service';
 import { ConfigService } from '@app/shared/config/config.service';
 import { LinearService } from '@app/modules/providers/adapters/linear/services/linear.service';
@@ -20,10 +24,12 @@ export class ConnectionsService {
 		@Inject(DatabaseService) private readonly database: DatabaseService,
 		@Inject(ConfigService) private readonly configuration: ConfigService,
 		@Inject(LinearService) private readonly linear: LinearService,
+		@Inject(ClickUpService) private readonly clickup: ClickUpService,
+		@Inject(JiraService) private readonly jira: JiraService,
 		@Inject(CredentialsService) private readonly credentials: CredentialsService,
 	) {}
 
-	async add(ownerId: string, command: TLinearConnectionCommand) {
+	async add(ownerId: string, command: TLiveConnectionCommand) {
 		if (this.configuration.get('APP_MODE') !== 'live') {
 			throw new BadRequestException({
 				code: HTTP_ERROR_CODE.MODE_UNAVAILABLE,
@@ -31,19 +37,17 @@ export class ConnectionsService {
 				retryable: false,
 			});
 		}
-		const identity = await this.linear.identity(command.credentials.token);
+		const identity = await this.verify(command.provider, command.credentials);
 		const id = randomUUID();
 		try {
 			return await this.database.client.connection.create({
 				data: {
 					id,
 					ownerId,
-					provider: 'linear',
+					provider: command.provider,
 					mode: 'live',
 					displayName: command.displayName,
-					sourceUserId: identity.viewer.id,
-					sourceUserName: identity.viewer.name,
-					sourceScopeId: identity.organization.id,
+					...identity,
 					encryptedCredentials: this.credentials.encrypt(
 						ownerId,
 						id,
@@ -68,6 +72,23 @@ export class ConnectionsService {
 		}
 	}
 
+	private async verify(provider: string, credentials: TTrackerCredentials) {
+		if (provider === 'jira') {
+			return this.jira.identity(parse(JiraCredentials, credentials));
+		}
+		const { token } = parse(LinearCredentials, credentials);
+		if (provider === 'clickup') {
+			return this.clickup.identity(token);
+		}
+		const identity = await this.linear.identity(token);
+		return {
+			sourceUserId: identity.viewer.id,
+			sourceUserName: identity.viewer.name,
+			sourceScopeId: identity.organization.id,
+			sourceBaseUrl: null,
+		};
+	}
+
 	async owned(ownerId: string, id: string) {
 		const connection = await this.database.client.connection.findFirst({
 			where: { id, ownerId },
@@ -82,20 +103,19 @@ export class ConnectionsService {
 		return connection;
 	}
 
-	async replace(
-		ownerId: string,
-		id: string,
-		credentials: TLinearConnectionCommand['credentials'],
-	) {
+	async replace(ownerId: string, id: string, credentials: TTrackerCredentials) {
 		const previous = await this.owned(ownerId, id);
-		if (previous.provider !== 'linear' || this.configuration.get('APP_MODE') !== 'live') {
+		if (
+			!['linear', 'clickup', 'jira'].includes(previous.provider) ||
+			this.configuration.get('APP_MODE') !== 'live'
+		) {
 			throw new BadRequestException({
 				code: HTTP_ERROR_CODE.MODE_UNAVAILABLE,
 				message: HTTP_ERROR_MESSAGE.MODE_UNAVAILABLE,
 				retryable: false,
 			});
 		}
-		const identity = await this.linear.identity(credentials.token);
+		const identity = await this.verify(previous.provider, credentials);
 		return this.database.client.$transaction(async (transaction) => {
 			await this.lock(transaction, id);
 			const current = await transaction.connection.findFirst({ where: { id, ownerId } });
@@ -107,8 +127,8 @@ export class ConnectionsService {
 				});
 			}
 			if (
-				identity.viewer.id !== current.sourceUserId ||
-				identity.organization.id !== current.sourceScopeId
+				identity.sourceUserId !== current.sourceUserId ||
+				identity.sourceScopeId !== current.sourceScopeId
 			) {
 				throw new ConflictException({
 					code: HTTP_ERROR_CODE.CONNECTION_IDENTITY_MISMATCH,
@@ -121,7 +141,8 @@ export class ConnectionsService {
 				data: {
 					encryptedCredentials: this.credentials.encrypt(ownerId, id, credentials),
 					credentialVersion: { increment: 1 },
-					sourceUserName: identity.viewer.name,
+					sourceUserName: identity.sourceUserName,
+					sourceBaseUrl: identity.sourceBaseUrl,
 					verifiedAt: new Date(),
 					status: 'active',
 				},

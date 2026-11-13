@@ -1,4 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
+import { JiraCredentials, LinearCredentials } from '@self-review/contracts';
+import { ClickUpService } from '@app/modules/providers/adapters/clickup/clickup.service';
+import { JiraService } from '@app/modules/providers/adapters/jira/jira.service';
 import { DatabaseService } from '@app/shared/database/database.service';
 import { ConfigService } from '@app/shared/config/config.service';
 import { CredentialsService } from '@app/shared/credentials/credentials.service';
@@ -17,12 +20,14 @@ export class ProvidersService {
 		@Inject(CredentialsService) private readonly credentials: CredentialsService,
 		@Inject(FixtureService) private readonly fixture: FixtureService,
 		@Inject(LinearService) private readonly linear: LinearService,
+		@Inject(ClickUpService) private readonly clickup: ClickUpService,
+		@Inject(JiraService) private readonly jira: JiraService,
 	) {}
 
-	private token(connection: Connection) {
+	private secret(connection: Connection) {
 		if (
 			this.configuration.get('APP_MODE') !== 'live' ||
-			connection.provider !== 'linear' ||
+			!['linear', 'clickup', 'jira'].includes(connection.provider) ||
 			connection.mode !== 'live' ||
 			connection.status !== 'active' ||
 			!connection.encryptedCredentials
@@ -33,11 +38,22 @@ export class ProvidersService {
 			connection.ownerId,
 			connection.id,
 			connection.encryptedCredentials,
-		).token;
+		);
 	}
 
 	async catalog(connection: Connection, cursor: string | null) {
-		return this.linear.projects(this.token(connection), cursor);
+		const credentials = this.secret(connection);
+		if (connection.provider === 'clickup') {
+			return this.clickup.projects(LinearCredentials.parse(credentials).token, cursor);
+		}
+		if (connection.provider === 'jira') {
+			return this.jira.projects(
+				JiraCredentials.parse(credentials),
+				cursor,
+				connection.sourceBaseUrl,
+			);
+		}
+		return this.linear.projects(LinearCredentials.parse(credentials).token, cursor);
 	}
 
 	async forRun(runId: string): Promise<ITaskProvider> {
@@ -75,7 +91,21 @@ export class ProvidersService {
 				},
 			};
 		}
-		return this.linear.open(this.token(connection), run.project.externalId);
+		const credentials = this.secret(connection);
+		if (connection.provider === 'clickup') {
+			return this.clickup.open(
+				LinearCredentials.parse(credentials).token,
+				run.project.externalId,
+			);
+		}
+		if (connection.provider === 'jira') {
+			const jira = JiraCredentials.parse(credentials);
+			if (jira.cloudId !== connection.sourceScopeId) {
+				throw new ProviderError('PROVIDER_SCOPE_CHANGED');
+			}
+			return this.jira.open(jira, run.project.externalId, connection.sourceBaseUrl);
+		}
+		return this.linear.open(LinearCredentials.parse(credentials).token, run.project.externalId);
 	}
 
 	async comments(runId: string, externalId: string) {

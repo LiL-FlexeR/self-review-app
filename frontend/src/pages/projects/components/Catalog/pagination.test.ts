@@ -27,3 +27,26 @@ it('stops repeated cursors and duplicate-only pages without hiding their incompl
 		catalogContinuation([first, { ...first, nextCursor: 'another' }], [null, 'next']).hasLoop,
 	).toBe(true);
 });
+
+it('continues empty hierarchy pages while their cursors advance, then completes explicitly', () => {
+	const first = { items: [], nextCursor: 'folder-1' };
+	const second = { items: [], nextCursor: 'folder-2' };
+	expect(catalogContinuation([first], [null])).toEqual({
+		nextCursor: 'folder-1',
+		hasLoop: false,
+	});
+	expect(catalogContinuation([first, second], [null, 'folder-1'])).toEqual({
+		nextCursor: 'folder-2',
+		hasLoop: false,
+	});
+	expect(
+		catalogContinuation(
+			[first, second, { items: [{ id: 'folder-list' }], nextCursor: null }],
+			[null, 'folder-1', 'folder-2'],
+		),
+	).toEqual({ nextCursor: undefined, hasLoop: false });
+	expect(
+		catalogContinuation([first, { items: [], nextCursor: 'folder-1' }], [null, 'folder-1'])
+			.hasLoop,
+	).toBe(true);
+});

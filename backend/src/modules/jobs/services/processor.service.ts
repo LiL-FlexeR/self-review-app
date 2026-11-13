@@ -224,6 +224,9 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 			selection.mode === 'period'
 				? await this.importPeriodTasks(provider, run.id, project.externalId, selection)
 				: await this.importSelectedTasks(provider, run.id, project.externalId, selection);
+		for (const warning of provider.warnings ?? []) {
+			await this.sourceNotice(run.id, warning);
+		}
 		const importComplete = await this.saveImportCoverage(run.id, coverage);
 		const analysis = Analysis.parse(await this.agent.run(run.id, run.id, false));
 

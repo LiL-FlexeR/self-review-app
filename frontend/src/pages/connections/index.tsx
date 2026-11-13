@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@app/components/ui/Car
 import { Button } from '@app/components/ui/Button';
 import { Status } from '@app/components/ui/Status';
 import { AppShell } from '@app/components/templates/AppShell';
-import { LinearForm } from '@app/pages/connections/components/LinearForm';
+import { ProviderForm } from '@app/pages/connections/components/ProviderForm';
 import { ConnectionCard } from '@app/pages/connections/components/ConnectionCard';
 
 export function ConnectionsPage() {
@@ -40,18 +40,31 @@ export function ConnectionsPage() {
 						/>
 					))}
 				{identity &&
-					connections.data?.availableProviders.includes('linear') &&
-					!connections.data.items.some(
-						(connection) => connection.provider === 'linear',
-					) && (
-						<Card>
-							<CardHeader>
-								<CardTitle>Connect Linear</CardTitle>
-							</CardHeader>
-							<CardContent>
-								<LinearForm userId={identity.user.id} />
-							</CardContent>
-						</Card>
+					(['linear', 'clickup', 'jira'] as const).map(
+						(provider) =>
+							connections.data?.availableProviders.includes(provider) &&
+							!connections.data.items.some(
+								(connection) => connection.provider === provider,
+							) && (
+								<Card key={provider}>
+									<CardHeader>
+										<CardTitle>
+											Connect{' '}
+											{provider === 'jira'
+												? 'Jira Cloud'
+												: provider === 'clickup'
+													? 'ClickUp'
+													: 'Linear'}
+										</CardTitle>
+									</CardHeader>
+									<CardContent>
+										<ProviderForm
+											userId={identity.user.id}
+											provider={provider}
+										/>
+									</CardContent>
+								</Card>
+							),
 					)}
 				{connections.data?.availableProviders.includes('fixture') &&
 					!connections.data.items.some(
@@ -73,12 +86,6 @@ export function ConnectionsPage() {
 							</CardContent>
 						</Card>
 					)}
-				<Card>
-					<CardHeader>
-						<CardTitle>ClickUp and Jira Cloud</CardTitle>
-					</CardHeader>
-					<CardContent>These source connections are not available yet.</CardContent>
-				</Card>
 			</div>
 		</AppShell>
 	);

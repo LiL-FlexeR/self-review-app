@@ -24,6 +24,7 @@ export interface IProviderComments {
 }
 
 export interface ITaskProvider {
+	warnings?: string[];
 	list(
 		project: string,
 		cursor: string | null,

@@ -10,6 +10,6 @@ export function catalogContinuation(pages: TCatalogPage[], pageParams: unknown[]
 	);
 	const hasLoop =
 		pageParams.includes(last.nextCursor) ||
-		!last.items.some((item) => !previousIds.has(item.id));
+		(last.items.length > 0 && !last.items.some((item) => !previousIds.has(item.id)));
 	return { nextCursor: hasLoop ? undefined : last.nextCursor, hasLoop };
 }

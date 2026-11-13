@@ -8,6 +8,18 @@ import { excerpt } from '@app/utils/excerpt';
 
 const logger = new AppLogger('AgentEvidence');
 
+function supportsReportedResult(state: string) {
+	const normalized = state.trim().toLowerCase();
+	// Adapters append their API-confirmed status category to the original label.
+	// A canceled Jira state can still belong to its terminal "done" category.
+	const label = normalized.replace(/\s*\([^()]*\)$/, '').trim();
+	if (/\bcancel(?:l)?ed\b/.test(label)) {
+		return false;
+	}
+	const category = /\(([^()]*)\)$/.exec(normalized)?.[1] ?? normalized;
+	return ['completed', 'closed', 'done'].includes(category);
+}
+
 function rejectEvidence(
 	reason: TEvidenceValidationReason,
 	details: ILogFields & { claimIndex: number },
@@ -88,10 +100,7 @@ export function validateEvidence(
 			if (source.kind !== 'metadata') {
 				substantive = true;
 			}
-			if (
-				claim.kind !== 'task_description' &&
-				['started', 'canceled', 'backlog'].includes(source.state)
-			) {
+			if (claim.kind !== 'task_description' && !supportsReportedResult(source.state)) {
 				rejectEvidence('TASK_STATE_NOT_RESULT', {
 					...details,
 				});

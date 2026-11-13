@@ -83,6 +83,7 @@ export const ConnectionView = zod.object({
 	sourceUserName: zod.string(),
 	status: zod.string(),
 	verifiedAt: zod.string(),
+	warnings: zod.array(zod.string()).default([]),
 });
 export const ProjectView = zod.object({
 	id: Id,
@@ -94,7 +95,7 @@ export const ProjectView = zod.object({
 });
 export const ConnectionsView = zod.object({
 	items: zod.array(ConnectionView),
-	availableProviders: zod.array(zod.enum(['fixture', 'linear'])),
+	availableProviders: zod.array(zod.enum(['fixture', 'linear', 'clickup', 'jira'])),
 });
 export const JobView = zod.object({
 	runId: Id,

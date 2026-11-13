@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@nestjs/common';
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto';
 import { z as zod } from 'zod';
-import { LinearCredentials } from '@self-review/contracts';
+import { TrackerCredentials } from '@self-review/contracts';
 import { ConfigService } from '@app/shared/config/config.service';
 
 const Envelope = zod.strictObject({
@@ -18,7 +18,7 @@ export class CredentialsService {
 	encrypt(
 		ownerId: string,
 		connectionId: string,
-		credentials: zod.infer<typeof LinearCredentials>,
+		credentials: zod.infer<typeof TrackerCredentials>,
 	): string {
 		const nonce = randomBytes(12);
 		const cipher = createCipheriv(
@@ -28,7 +28,7 @@ export class CredentialsService {
 		);
 		cipher.setAAD(Buffer.from(JSON.stringify([1, ownerId, connectionId])));
 		const ciphertext = Buffer.concat([
-			cipher.update(JSON.stringify(LinearCredentials.parse(credentials))),
+			cipher.update(JSON.stringify(TrackerCredentials.parse(credentials))),
 			cipher.final(),
 		]);
 		return JSON.stringify({
@@ -48,7 +48,7 @@ export class CredentialsService {
 		);
 		decipher.setAAD(Buffer.from(JSON.stringify([1, ownerId, connectionId])));
 		decipher.setAuthTag(Buffer.from(envelope.tag, 'base64'));
-		return LinearCredentials.parse(
+		return TrackerCredentials.parse(
 			JSON.parse(
 				Buffer.concat([
 					decipher.update(Buffer.from(envelope.ciphertext, 'base64')),

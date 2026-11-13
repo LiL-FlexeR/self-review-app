@@ -48,6 +48,12 @@ export class ProjectsService {
 		return ConnectionView.parse(
 			serialized({
 				...connection,
+				warnings:
+					connection.provider === 'jira' && !connection.sourceBaseUrl
+						? [
+								'Jira browser links are unavailable: no verified atlassian.net origin. Internal citations remain available.',
+							]
+						: [],
 				modelMode:
 					this.configuration.get('APP_MODE') === 'offline' ? 'scripted' : 'live OpenAI',
 			}),
@@ -57,7 +63,9 @@ export class ProjectsService {
 	async connections(ownerId: string) {
 		return {
 			availableProviders:
-				this.configuration.get('APP_MODE') === 'live' ? ['linear'] : ['fixture'],
+				this.configuration.get('APP_MODE') === 'live'
+					? ['linear', 'clickup', 'jira']
+					: ['fixture'],
 			items: (
 				await this.database.client.connection.findMany({
 					where: { ownerId },

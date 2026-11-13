@@ -244,7 +244,11 @@ it('verifies keys before storage, enforces live slots and keeps credentials writ
 		/encryptedCredentials|lin_api_|credentialVersion/,
 	);
 	expect((await post('/connections', body)).status).toBe(409);
-	expect((await get('/connections')).body.availableProviders).toEqual(['linear']);
+	expect((await get('/connections')).body.availableProviders).toEqual([
+		'linear',
+		'clickup',
+		'jira',
+	]);
 });
 
 it('paginates accessible projects through the end and preserves local IDs', async () => {

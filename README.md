@@ -2,7 +2,7 @@
 
 A web application for preparing developer self-reviews from Linear, ClickUp, and Jira Cloud tasks. Users connect task sources, synchronize a project, inspect saved tasks, and create a report with quotations and source references.
 
-The local workflow supports synthetic tracker data in offline/demo modes and a Linear personal-key connection in live mode. Adapter acceptance, live-model verification, and remaining browser checks are tracked in the [ROADMAP](ROADMAP.md).
+The local workflow supports synthetic tracker data in offline/demo modes and Linear, ClickUp and Jira Cloud token connections in live mode. Adapter acceptance, live-model verification, and remaining browser checks are tracked in the [ROADMAP](ROADMAP.md).
 
 ## Problem and users
 
@@ -70,9 +70,13 @@ Runtime modes:
 | --- | --- | --- |
 | offline — default | Synthetic source and scripted model; the entire auth/DB/queue/SSE workflow is real | None |
 | demo | Synthetic source + real OpenAI | OPENAI_API_KEY on the worker |
-| live | Linear + OpenAI; fixture creation is rejected. ClickUp/Jira are not available yet | OpenAI on the worker; Linear personal Read key entered in the UI |
+| live | Linear, ClickUp or Jira Cloud + OpenAI; fixture creation is rejected | OpenAI on the worker; tracker credentials entered in the UI |
 
 For Linear, set `APP_MODE=live` and `OPENAI_API_KEY` in the server `.env`, then rebuild/recreate API and worker. After password + OTP, open Connections, enter a connection name and a personal Read key, and choose **Verify and save**. Browse Projects and use **Load more projects** to reach later catalog pages, including accessible archived projects. Sync uses UTC task creation dates, every status and assignee; review uses only tasks assigned to the verified token owner. Replace a key only for the same Linear user and workspace. Confirmed connection deletion removes its local projects, snapshots and reports and is blocked while a job is active; it does not revoke the key in Linear. Never paste keys into chat or commit private tickets.
+
+For ClickUp, enter a personal API token. The catalog shows Lists with workspace/Space/Folder breadcrumbs, including accessible archived containers. Sync explicitly requests closed tasks, subtasks, Tasks in Multiple Lists and accessible archived tasks; multiple assignees are retained. Review describes the API-confirmed token owner.
+
+For Jira Cloud, enter the Atlassian account email, a **scoped** personal API token and the site's **cloudId**. Use the official [token setup](https://support.atlassian.com/atlassian-account/docs/manage-api-tokens-for-your-atlassian-account/) and [cloudId lookup](https://support.atlassian.com/jira/kb/retrieve-my-atlassian-sites-cloud-id/) instructions. Grant read access to your profile, projects, issues and comments; server-info access enables browser links. Requests use the fixed Atlassian cloud gateway. If server-info is unavailable or its host is outside `*.atlassian.net`, saved internal citations still work and the UI warns that external links are unavailable. Standard Jira search does not guarantee archived issues. A replacement token must preserve the API-confirmed accountId and cloudId; switching sites requires explicit local connection deletion and a new connection.
 
 Every mode requires email + password + OTP. Offline uses the same authentication/storage/queue path and clearly labels its scripted model. Full [configuration](docs/architecture/overview.md#modes-and-configuration) and [authentication and secret-handling rules](docs/decisions/D04-auth-and-credentials.md).
 
@@ -110,7 +114,7 @@ npm run test:integration
 npm run build
 ```
 
-Tests cover authentication, storage constraints, real BullMQ/Postgres/Redis execution, the 6/137-task cases, source validation, automatic/manual review, report rollback, selective refresh, ownership, enqueue-gap recovery, SSE disconnect/API restart, and client recovery. Integration substitutes SMTP and the external model/source boundaries. Linear transport tests cover paginated catalogs/imports, exact UTC boundaries, all statuses/assignees, scoped selected refresh, identity replacement, encrypted credentials, GraphQL HTTP 200 errors, and byte/time budgets. SDK tests use a synthetic HTTP transport and do not prove live OpenAI access. See [actual stage verification](ROADMAP.md).
+Tests cover authentication, storage constraints, real BullMQ/Postgres/Redis execution, the 6/137-task cases, source validation, automatic/manual review, report rollback, selective refresh, ownership, enqueue-gap recovery, SSE disconnect/API restart, and client recovery. Integration substitutes SMTP and the external model/source boundaries. Provider transport/HTTP tests cover paginated catalogs/imports, exact UTC boundaries, scoped selected refresh, identity replacement, encrypted credentials, byte/time budgets and ownership. Linear cases include GraphQL HTTP 200 errors; ClickUp includes empty hierarchy traversal, archived/closed/subtask/TIML options and multiple assignees; Jira includes enhanced JQL continuation, ADF, safe-origin discovery and cloudId rotation restrictions. Shared evidence checks reject unfinished or unknown status categories as support for result/measurement claims. SDK tests use a synthetic HTTP transport and do not prove live OpenAI access. See [actual stage verification](ROADMAP.md).
 
 Manual S01 check: signup → Mailpit → OTP → protected shell → open a second tab → sign out → confirm both tabs clear the account → sign in with password and a fresh OTP. Reload `/connections` or `/projects`; missing `/api` and asset paths retain 404 responses. Authentication expiry and competing refreshes are covered with a controlled test clock and real storage.
 
@@ -126,7 +130,7 @@ Manual S01 check: signup → Mailpit → OTP → protected shell → open a seco
 
 Generation uses the configured model and can incur new usage. Opening/exporting never generates. Partial-source review requires explicit acknowledgment; failed regeneration preserves the old valid report.
 
-For live-model verification, set `APP_MODE=demo` and `OPENAI_API_KEY` in the gitignored server `.env`, then recreate API/worker. The pinned model is `gpt-5.4-mini-2026-03-17`, reasoning `low`, with no fallback. Repeat Demo platform and Description evidence example; inspect actual comment choices and quotations. This live check remains unexecuted. Never put the key into a `VITE_` variable or a request body.
+For live-model verification, set `APP_MODE=demo` and `OPENAI_API_KEY` in the gitignored server `.env`, then recreate API/worker. The pinned model is `gpt-5.4-mini-2026-03-17`, reasoning `low`, with no fallback. Repeat Demo platform and Description evidence example; inspect actual comment choices and quotations. See ROADMAP for the latest executed live-model checks and remaining limitations. Never put the key into a `VITE_` variable or a request body.
 
 For Docker with Vite, apply these environment changes with `APP_PORT=3001 APP_ORIGIN=http://localhost:5173 docker compose up -d --force-recreate --wait api worker`. Keep dependency startup enabled: `--no-deps` is appropriate only when Postgres, Redis, and Mailpit are already running and ready. OPENAI_MODEL must match the exact pinned snapshot above; other values fail configuration validation before startup.
 

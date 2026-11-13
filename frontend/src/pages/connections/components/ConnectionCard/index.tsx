@@ -16,7 +16,7 @@ import {
 	SheetClose,
 } from '@app/components/ui/Sheet';
 import { Status } from '@app/components/ui/Status';
-import { LinearForm } from '@app/pages/connections/components/LinearForm';
+import { ProviderForm } from '@app/pages/connections/components/ProviderForm';
 
 export function ConnectionCard({
 	connection,
@@ -53,27 +53,43 @@ export function ConnectionCard({
 				<p>
 					Tracker token owner: {connection.sourceUserName} ({connection.sourceUserId})
 				</p>
+				{connection.warnings.map((warning) => (
+					<Status key={warning}>{warning}</Status>
+				))}
 				<p className="text-sm">
 					Verified {new Date(connection.verifiedAt).toLocaleString()}
 				</p>
 				<Link className="underline" to="/projects">
 					Browse projects
 				</Link>
-				{connection.provider === 'linear' && (
+				{(connection.provider === 'linear' ||
+					connection.provider === 'clickup' ||
+					connection.provider === 'jira') && (
 					<>
 						<p className="text-sm text-muted-foreground">
-							One Linear connection per account. Replacement requires the same tracker
-							user and workspace. To switch accounts, explicitly delete this
-							connection first.
+							One connection per provider per account. Replacement requires the same
+							tracker user
+							{connection.provider === 'linear'
+								? ' and workspace'
+								: connection.provider === 'jira'
+									? ' and cloudId'
+									: ''}
+							. To switch accounts, explicitly delete this connection first.
 						</p>
 						<Button
 							variant="outline"
 							onClick={() => setReplacing(!isReplacing)}
 							aria-expanded={isReplacing}
 						>
-							{isReplacing ? 'Cancel replacement' : 'Replace key'}
+							{isReplacing ? 'Cancel replacement' : 'Replace credentials'}
 						</Button>
-						{isReplacing && <LinearForm userId={userId} connectionId={connection.id} />}
+						{isReplacing && (
+							<ProviderForm
+								userId={userId}
+								connectionId={connection.id}
+								provider={connection.provider}
+							/>
+						)}
 					</>
 				)}
 				<Button
@@ -92,8 +108,8 @@ export function ConnectionCard({
 							<SheetDescription>
 								This permanently deletes the local key, projects, snapshots and
 								reports for this connection.{' '}
-								{connection.provider === 'linear'
-									? 'The personal key in Linear is not revoked.'
+								{connection.provider !== 'fixture'
+									? 'The personal token in the tracker is not revoked.'
 									: 'The synthetic source can be added again.'}{' '}
 								Deletion is blocked while a job is active.
 							</SheetDescription>

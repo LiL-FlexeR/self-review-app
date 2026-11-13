@@ -16,7 +16,7 @@ import type { Request, Response } from 'express';
 import { z as zod } from 'zod';
 import {
 	FixtureCommand,
-	LinearConnectionCommand,
+	LiveConnectionCommand,
 	ReplaceCredentialsCommand,
 	DeleteConnectionCommand,
 	SyncCommand,
@@ -56,7 +56,7 @@ export class ProjectsController {
 	}
 	@Post('connections') async add(@Req() req: Request, @Body() body: unknown) {
 		const identity = await this.identity(req, true);
-		const command = parse(zod.union([FixtureCommand, LinearConnectionCommand]), body);
+		const command = parse(zod.union([FixtureCommand, LiveConnectionCommand]), body);
 		return command.provider === 'fixture'
 			? this.projects.add(identity.sub)
 			: this.projects.connectionView(await this.connectionService.add(identity.sub, command));

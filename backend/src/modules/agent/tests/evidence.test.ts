@@ -125,6 +125,34 @@ describe('workflow trust boundaries', () => {
 		}
 		expect(() => validateEvidence(output, [{ ...source, kind: 'metadata' }])).toThrow();
 	});
+	it.each([
+		'to do (open)',
+		'In progress (custom)',
+		'In Progress (indeterminate)',
+		'To Do (new)',
+		'Canceled (done)',
+		'Cancelled (closed)',
+		'Closed (custom)',
+		'unknown',
+	])('rejects result claims for unfinished or unknown provider state: %s', (state) => {
+		expect(() => validateEvidence(output, [{ ...source, state }])).toThrow(
+			'INVALID_MODEL_OUTPUT',
+		);
+		const description = {
+			...output,
+			findings: output.findings.map((claim) => ({
+				...claim,
+				kind: 'task_description' as const,
+			})),
+		};
+		expect(() => validateEvidence(description, [{ ...source, state }])).not.toThrow();
+	});
+	it.each(['completed', 'closed', 'done', 'complete (closed)', 'Done (done)'])(
+		'accepts supported result evidence for completed provider state: %s',
+		(state) => {
+			expect(() => validateEvidence(output, [{ ...source, state }])).not.toThrow();
+		},
+	);
 	it('does not split UTF-8 excerpts and escapes rendered source text', () => {
 		expect(Buffer.byteLength(excerpt('🙂'.repeat(500)))).toBe(1024);
 		expect(
