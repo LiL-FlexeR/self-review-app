@@ -50,12 +50,16 @@ export function Catalog({
 				</CardTitle>
 			</CardHeader>
 			<CardContent className="space-y-4 wrap-anywhere">
-				{catalog.isPending && <Status>Loading project catalog…</Status>}
+				{catalog.isPending && <Status variant="loading">Loading project catalog…</Status>}
 				{catalog.error && (
-					<Status>{catalog.error.message} Loaded projects remain available.</Status>
+					<Status variant="error">
+						{catalog.error.message} Loaded projects remain available.
+					</Status>
 				)}
 				{hasLoop && (
-					<Status>Project pagination did not advance. Discovery is incomplete.</Status>
+					<Status variant="warning">
+						Project pagination did not advance. Discovery is incomplete.
+					</Status>
 				)}
 				{items.map((project) => (
 					<div key={project.id} className="rounded-xl border p-4">

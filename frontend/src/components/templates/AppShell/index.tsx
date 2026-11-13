@@ -4,11 +4,16 @@ import { useQuery } from '@tanstack/react-query';
 import { auth } from '@app/auth/session';
 import { Button } from '@app/components/ui/Button';
 import { Status } from '@app/components/ui/Status';
-import { SidebarInset, SidebarProvider, SidebarTrigger } from '@app/components/ui/Sidebar';
-import { AppSidebar } from '@app/components/templates/AppShell/components/AppSidebar';
+import { AppShellLayout } from '@app/components/templates/AppShell/components/AppShellLayout';
 import type { IAppShellProps } from './types';
 
-export function AppShell({ title, description, children }: IAppShellProps) {
+export function AppShell({
+	title,
+	description,
+	actions,
+	contentWidth = 'workspace',
+	children,
+}: IAppShellProps) {
 	const user = useSyncExternalStore(auth.subscribe, auth.snapshot);
 	const location = useLocation();
 	const [error, setError] = useState('');
@@ -37,39 +42,26 @@ export function AppShell({ title, description, children }: IAppShellProps) {
 	}
 
 	return (
-		<SidebarProvider>
-			<a
-				className="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:rounded-md focus:bg-background focus:p-2"
-				href="#content"
-			>
-				Skip to content
-			</a>
-			<AppSidebar user={user} busy={busy} onLogout={() => void logout()} />
-			<SidebarInset id="content" className="min-w-0">
-				<div className="mx-auto flex w-full max-w-[964px] flex-col gap-6 px-4 py-6 md:px-8 md:py-12">
-					<header className="space-y-4">
-						<div className="flex items-center gap-3">
-							<SidebarTrigger />
-							<span className="text-sm text-muted-foreground">{user.mode} mode</span>
-						</div>
-						<h1 className="text-[28px] leading-tight">{title}</h1>
-						<p className="text-sm text-muted-foreground">{description}</p>
-					</header>
-					{(error || account.error) && (
-						<Status>
-							{error || account.error?.message}{' '}
-							<Button variant="outline" onClick={() => void account.refetch()}>
-								Retry connection
-							</Button>
-						</Status>
-					)}
-					{children}
-					<p className="text-sm text-muted-foreground">
-						Signing out prevents future renewal. Issued access tokens expire within 15
-						minutes.
-					</p>
-				</div>
-			</SidebarInset>
-		</SidebarProvider>
+		<AppShellLayout
+			title={title}
+			description={description}
+			actions={actions}
+			contentWidth={contentWidth}
+			user={user}
+			busy={busy}
+			onLogout={() => void logout()}
+			feedback={
+				(error || account.error) && (
+					<Status variant="error">
+						{error || account.error?.message}{' '}
+						<Button variant="outline" onClick={() => void account.refetch()}>
+							Retry connection
+						</Button>
+					</Status>
+				)
+			}
+		>
+			{children}
+		</AppShellLayout>
 	);
 }

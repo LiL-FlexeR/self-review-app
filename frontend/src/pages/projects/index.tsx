@@ -17,11 +17,12 @@ export function ProjectsPage() {
 	});
 	return (
 		<AppShell
+			contentWidth="projects"
 			title="Projects"
 			description="Browse the projects accessible to your source connection."
 		>
-			{connections.isPending && <Status>Loading sources…</Status>}
-			{connections.error && <Status>{connections.error.message}</Status>}
+			{connections.isPending && <Status variant="loading">Loading sources…</Status>}
+			{connections.error && <Status variant="error">{connections.error.message}</Status>}
 			{connections.data?.items.length === 0 && (
 				<p>
 					No sources yet.{' '}

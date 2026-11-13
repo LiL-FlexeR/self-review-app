@@ -19,7 +19,7 @@ Before implementing or changing frontend UI, or verifying its appearance and int
 
 | Source | Responsibility |
 | --- | --- |
-| [UX.md](../design/UX.md) | Application screens, navigation, interactions, messages, responsive behavior, and accessibility |
+| [UX.md](../design/UX.md) | Application screens, navigation, interactions, messages, responsive behavior, and accessibility; approved redesign compositions are linked through UI_GUIDELINES.md |
 | [DESIGN.md](../design/DESIGN.md) | Visual reference: composition, surfaces, visual hierarchy, density, and component treatment |
 | [tokens.json](../design/tokens.json) | Machine-readable baseline values for the token categories it contains |
 | [variables.css](../design/variables.css) | Reference CSS custom properties and layout variables for applying the tokens |

@@ -12,10 +12,10 @@ export function ReportView({ id, userId }: { id: string; userId: string }) {
 		queryFn: ({ signal }) => read(`/reviews/${id}`, ReviewView, signal),
 	});
 	if (report.isPending) {
-		return <Status>Loading saved report…</Status>;
+		return <Status variant="loading">Loading saved report…</Status>;
 	}
 	if (report.error) {
-		return <Status>{report.error.message}</Status>;
+		return <Status variant="error">{report.error.message}</Status>;
 	}
 	const saved = report.data!;
 	const download = (format: 'json' | 'md') => {
@@ -31,7 +31,7 @@ export function ReportView({ id, userId }: { id: string; userId: string }) {
 		URL.revokeObjectURL(url);
 	};
 	return (
-		<Card>
+		<Card className="mx-auto w-full max-w-(--content-width-reading)">
 			<CardHeader>
 				<CardTitle>Self-review draft</CardTitle>
 			</CardHeader>
@@ -67,7 +67,7 @@ export function ReportView({ id, userId }: { id: string; userId: string }) {
 											<blockquote className="my-2 border-l pl-3">
 												{pair.quote}
 											</blockquote>
-											<p className="text-xs">{pair.sourceId}</p>
+											<p className="text-metadata">{pair.sourceId}</p>
 											<p className="text-sm">
 												Retrieved: {source?.retrievedAt}
 											</p>
@@ -100,7 +100,7 @@ export function ReportView({ id, userId }: { id: string; userId: string }) {
 				<TraceView runId={saved.reviewRunId} userId={userId} />
 				<details>
 					<summary>Model usage (scripted/unknown is not an actual zero cost)</summary>
-					<pre className="overflow-auto text-xs">
+					<pre className="overflow-auto text-metadata">
 						{JSON.stringify(saved.usage, null, 2)}
 					</pre>
 				</details>

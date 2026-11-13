@@ -1,6 +1,5 @@
 @import 'tailwindcss';
 :root {
-	/* Colors */
 	--color-parchment: #faf8f5;
 	--color-soft-paper: #fdfbfa;
 	--color-warm-mist: #d1d1cd;
@@ -9,13 +8,9 @@
 	--color-ink: #27251e;
 	--color-pure-black: #000000;
 	--color-deep-teal: #016a71;
-
-	/* Typography — Font Families */
 	--font-pplxsans:
 		'pplxSans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
 		sans-serif;
-
-	/* Typography — Scale */
 	--text-caption: 11px;
 	--leading-caption: 1.5;
 	--text-body-sm: 12px;
@@ -24,93 +19,69 @@
 	--leading-body: 1.43;
 	--text-body-lg: 16px;
 	--leading-body-lg: 1.5;
-
-	/* Typography — Weights */
+	--text-page: 28px;
+	--text-page--line-height: 36px;
+	--text-page--font-weight: 500;
+	--text-page-small: 24px;
+	--text-page-small--line-height: 32px;
+	--text-page-small--font-weight: 500;
+	--text-section: 20px;
+	--text-section--line-height: 28px;
+	--text-section--font-weight: 500;
+	--text-component: 18px;
+	--text-component--line-height: 28px;
+	--text-component--font-weight: 500;
+	--text-report: 16px;
+	--text-report--line-height: 28px;
+	--text-report--font-weight: 400;
+	--text-ui: 14px;
+	--text-ui--line-height: 20px;
+	--text-ui--font-weight: 400;
+	--text-metadata: 14px;
+	--text-metadata--line-height: 20px;
+	--text-metadata--font-weight: 400;
+	--text-identifier: 14px;
+	--text-identifier--line-height: 20px;
+	--text-identifier--font-weight: 400;
 	--font-weight-regular: 400;
 	--font-weight-medium: 500;
-
-	/* Spacing */
 	--spacing-unit: 4px;
 	--spacing-ref-4: 4px;
 	--spacing-ref-8: 8px;
 	--spacing-ref-12: 12px;
 	--spacing-ref-16: 16px;
 	--spacing-ref-32: 32px;
-
-	/* Layout */
-	--page-max-width: 900px;
+	--spacing-ref-24: 24px;
+	--spacing-ref-48: 48px;
+	--content-width-auth: 440px;
+	--content-width-connections: 1040px;
+	--content-width-projects: 1200px;
+	--content-width-workspace: 1280px;
+	--content-width-reading: 760px;
+	--sidebar-width-expanded: 240px;
 	--section-gap: 32px;
 	--card-padding: 16px;
 	--element-gap: 8px;
-
-	/* Border Radius */
 	--radius-md: 6px;
 	--radius-xl: 12px;
 	--radius-2xl: 16px;
 	--radius-full: 9999px;
-
-	/* Named Radii */
 	--radius-cards: 16px;
 	--radius-chips: 9999px;
 	--radius-inputs: 12px;
-	--radius-buttons: 6px;
-
-	/* Shadows */
+	--radius-button-filled: 12px;
+	--radius-button-quiet: 6px;
+	--radius-dialog: 16px;
+	--radius-menu: 6px;
 	--shadow-subtle: rgba(0, 0, 0, 0.08) 0px 1px 2px 0px;
-
-	/* Surfaces */
 	--surface-page-canvas: #faf8f5;
 	--surface-card-surface: #fdfbfa;
 	--surface-active-nav: #016a71;
 	--surface-button-fill: #27251e;
-}
-
-@theme {
-	/* Colors */
-	--color-parchment: #faf8f5;
-	--color-soft-paper: #fdfbfa;
-	--color-warm-mist: #d1d1cd;
-	--color-ash: #92918b;
-	--color-graphite: #72706b;
-	--color-ink: #27251e;
-	--color-pure-black: #000000;
-	--color-deep-teal: #016a71;
-
-	/* Typography */
-	--font-pplxsans:
-		'pplxSans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
-		sans-serif;
-
-	/* Typography — Scale */
-	--text-caption: 11px;
-	--leading-caption: 1.5;
-	--text-body-sm: 12px;
-	--leading-body-sm: 1.33;
-	--text-body: 14px;
-	--leading-body: 1.43;
-	--text-body-lg: 16px;
-	--leading-body-lg: 1.5;
-
-	/* Spacing */
-	--spacing-ref-4: 4px;
-	--spacing-ref-8: 8px;
-	--spacing-ref-12: 12px;
-	--spacing-ref-16: 16px;
-	--spacing-ref-32: 32px;
-
-	/* Border Radius */
-	--radius-md: 6px;
-	--radius-xl: 12px;
-	--radius-2xl: 16px;
-	--radius-full: 9999px;
-
-	/* Shadows */
-	--shadow-subtle: rgba(0, 0, 0, 0.08) 0px 1px 2px 0px;
-}
-
-:root {
 	--background: var(--color-parchment);
 	--foreground: var(--color-ink);
+	--surface: var(--color-soft-paper);
+	--surface-elevated: var(--color-soft-paper);
 	--card: var(--color-soft-paper);
 	--card-foreground: var(--color-ink);
 	--popover: var(--color-soft-paper);
@@ -122,13 +93,22 @@
 	--muted: var(--color-parchment);
 	--muted-foreground: var(--color-graphite);
 	--accent: var(--color-deep-teal);
-	--accent-foreground: #fff;
+	--accent-foreground: #ffffff;
+	--border: var(--color-warm-mist);
+	--input: var(--color-graphite);
+	--control-border: var(--color-graphite);
+	--ring: var(--color-deep-teal);
+	--hover: var(--color-soft-paper);
+	--hover-on-surface: var(--color-parchment);
+	--selection: var(--color-soft-paper);
+	--success: var(--color-ink);
+	--success-surface: var(--color-parchment);
+	--warning: var(--color-ink);
+	--warning-surface: var(--color-soft-paper);
+	--error: var(--color-ink);
+	--error-surface: var(--color-soft-paper);
 	--destructive: var(--color-ink);
 	--destructive-foreground: var(--color-parchment);
-	--border: var(--color-warm-mist);
-	--input: var(--color-warm-mist);
-	--ring: var(--color-deep-teal);
-	--radius: 12px;
 	--sidebar: var(--color-soft-paper);
 	--sidebar-foreground: var(--color-ink);
 	--sidebar-primary: var(--color-ink);
@@ -137,10 +117,93 @@
 	--sidebar-accent-foreground: var(--color-ink);
 	--sidebar-border: var(--color-warm-mist);
 	--sidebar-ring: var(--color-deep-teal);
+	--radius: 12px;
+}
+@theme {
+	--color-parchment: #faf8f5;
+	--color-soft-paper: #fdfbfa;
+	--color-warm-mist: #d1d1cd;
+	--color-ash: #92918b;
+	--color-graphite: #72706b;
+	--color-ink: #27251e;
+	--color-pure-black: #000000;
+	--color-deep-teal: #016a71;
+	--font-pplxsans:
+		'pplxSans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto,
+		sans-serif;
+	--text-caption: 11px;
+	--leading-caption: 1.5;
+	--text-body-sm: 12px;
+	--leading-body-sm: 1.33;
+	--text-body: 14px;
+	--leading-body: 1.43;
+	--text-body-lg: 16px;
+	--leading-body-lg: 1.5;
+	--text-page: 28px;
+	--text-page--line-height: 36px;
+	--text-page--font-weight: 500;
+	--text-page-small: 24px;
+	--text-page-small--line-height: 32px;
+	--text-page-small--font-weight: 500;
+	--text-section: 20px;
+	--text-section--line-height: 28px;
+	--text-section--font-weight: 500;
+	--text-component: 18px;
+	--text-component--line-height: 28px;
+	--text-component--font-weight: 500;
+	--text-report: 16px;
+	--text-report--line-height: 28px;
+	--text-report--font-weight: 400;
+	--text-ui: 14px;
+	--text-ui--line-height: 20px;
+	--text-ui--font-weight: 400;
+	--text-metadata: 14px;
+	--text-metadata--line-height: 20px;
+	--text-metadata--font-weight: 400;
+	--text-identifier: 14px;
+	--text-identifier--line-height: 20px;
+	--text-identifier--font-weight: 400;
+	--font-weight-regular: 400;
+	--font-weight-medium: 500;
+	--spacing-unit: 4px;
+	--spacing-ref-4: 4px;
+	--spacing-ref-8: 8px;
+	--spacing-ref-12: 12px;
+	--spacing-ref-16: 16px;
+	--spacing-ref-32: 32px;
+	--spacing-ref-24: 24px;
+	--spacing-ref-48: 48px;
+	--content-width-auth: 440px;
+	--content-width-connections: 1040px;
+	--content-width-projects: 1200px;
+	--content-width-workspace: 1280px;
+	--content-width-reading: 760px;
+	--sidebar-width-expanded: 240px;
+	--section-gap: 32px;
+	--card-padding: 16px;
+	--element-gap: 8px;
+	--radius-md: 6px;
+	--radius-xl: 12px;
+	--radius-2xl: 16px;
+	--radius-full: 9999px;
+	--radius-cards: 16px;
+	--radius-chips: 9999px;
+	--radius-inputs: 12px;
+	--radius-button-filled: 12px;
+	--radius-button-quiet: 6px;
+	--radius-dialog: 16px;
+	--radius-menu: 6px;
+	--shadow-subtle: rgba(0, 0, 0, 0.08) 0px 1px 2px 0px;
+	--surface-page-canvas: #faf8f5;
+	--surface-card-surface: #fdfbfa;
+	--surface-active-nav: #016a71;
+	--surface-button-fill: #27251e;
 }
 @theme inline {
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
+	--color-surface: var(--surface);
+	--color-surface-elevated: var(--surface-elevated);
 	--color-card: var(--card);
 	--color-card-foreground: var(--card-foreground);
 	--color-popover: var(--popover);
@@ -153,10 +216,21 @@
 	--color-muted-foreground: var(--muted-foreground);
 	--color-accent: var(--accent);
 	--color-accent-foreground: var(--accent-foreground);
-	--color-destructive: var(--destructive);
 	--color-border: var(--border);
 	--color-input: var(--input);
+	--color-control-border: var(--control-border);
 	--color-ring: var(--ring);
+	--color-hover: var(--hover);
+	--color-hover-on-surface: var(--hover-on-surface);
+	--color-selection: var(--selection);
+	--color-success: var(--success);
+	--color-success-surface: var(--success-surface);
+	--color-warning: var(--warning);
+	--color-warning-surface: var(--warning-surface);
+	--color-error: var(--error);
+	--color-error-surface: var(--error-surface);
+	--color-destructive: var(--destructive);
+	--color-destructive-foreground: var(--destructive-foreground);
 	--color-sidebar: var(--sidebar);
 	--color-sidebar-foreground: var(--sidebar-foreground);
 	--color-sidebar-primary: var(--sidebar-primary);
@@ -184,12 +258,16 @@
 		font-weight: 500;
 	}
 	button,
-	input {
+	input,
+	select,
+	textarea {
 		font: inherit;
 	}
 	button,
 	a,
-	input {
+	input,
+	select,
+	textarea {
 		touch-action: manipulation;
 	}
 	:focus-visible {
@@ -198,5 +276,28 @@
 	}
 	a {
 		text-underline-offset: 3px;
+	}
+	input[type='checkbox'],
+	input[type='radio'] {
+		accent-color: var(--accent);
+	}
+	input:autofill {
+		color: var(--foreground);
+		background-color: var(--surface);
+	}
+	input:-webkit-autofill {
+		-webkit-text-fill-color: var(--foreground);
+		box-shadow: 0 0 0 1000px var(--surface) inset;
+		caret-color: var(--foreground);
+	}
+	@media (prefers-reduced-motion: reduce) {
+		*,
+		*::before,
+		*::after {
+			animation-duration: 0.01ms !important;
+			animation-iteration-count: 1 !important;
+			transition-duration: 0.01ms !important;
+			scroll-behavior: auto !important;
+		}
 	}
 }

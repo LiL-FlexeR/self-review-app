@@ -39,7 +39,7 @@ export function SessionRoutes() {
 	if (loading) {
 		return (
 			<AuthPanel title="Checking your session">
-				<Status>Checking your session…</Status>
+				<Status variant="loading">Checking your session…</Status>
 			</AuthPanel>
 		);
 	}
@@ -47,7 +47,7 @@ export function SessionRoutes() {
 	if (error) {
 		return (
 			<AuthPanel title="Connection unavailable">
-				<Status>{error}</Status>
+				<Status variant="error">{error}</Status>
 				<Button onClick={load}>Retry</Button>
 			</AuthPanel>
 		);

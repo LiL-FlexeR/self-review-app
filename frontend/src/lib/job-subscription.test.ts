@@ -161,3 +161,37 @@ it('keeps one reconnect path and ignores callbacks from a replaced stream', asyn
 	expect(onState).toHaveBeenLastCalledWith(expect.objectContaining({ version: 2 }));
 	subscription.stop();
 });
+
+it('reports transport recovery separately and retains the last persisted execution state', async () => {
+	vi.useFakeTimers();
+	let callbacks!: Parameters<ConstructorParameters<typeof JobSubscription>[0]['connect']>[0];
+	const onConnection = vi.fn();
+	const onState = vi.fn();
+	const read = vi.fn(async () => state);
+	const subscription = new JobSubscription({
+		runId: state.runId,
+		read,
+		onState,
+		onStatus: vi.fn(),
+		onConnection,
+		connect: (listeners) => {
+			callbacks = listeners;
+			return vi.fn();
+		},
+	});
+	await subscription.start();
+	callbacks.open();
+	expect(onConnection).toHaveBeenLastCalledWith('connected');
+	callbacks.error();
+	expect(onConnection).toHaveBeenLastCalledWith('reconnecting');
+	read.mockRejectedValue(new Error('network'));
+	await vi.advanceTimersByTimeAsync(7000);
+	expect(onConnection).toHaveBeenLastCalledWith('exhausted');
+	expect(onState).toHaveBeenCalledTimes(1);
+	expect(onState).toHaveBeenLastCalledWith(state);
+	subscription.stop();
+	callbacks.message(JSON.stringify({ ...state, version: 9, state: 'failed' }));
+	callbacks.open();
+	expect(onConnection).toHaveBeenLastCalledWith('exhausted');
+	expect(onState).toHaveBeenCalledTimes(1);
+});

@@ -7,7 +7,11 @@ export default defineConfig({
 			jsc: {
 				target: 'es2023',
 				parser: { syntax: 'typescript', tsx: true, decorators: true },
-				transform: { legacyDecorator: true, decoratorMetadata: true },
+				transform: {
+					legacyDecorator: true,
+					decoratorMetadata: true,
+					react: { runtime: 'automatic' },
+				},
 			},
 		}),
 	],

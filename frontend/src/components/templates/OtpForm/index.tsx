@@ -10,7 +10,10 @@ import type { IOtpFormProps } from './types';
 export function OtpForm({ initialChallenge, onVerify, onResend, restartAction }: IOtpFormProps) {
 	const [challenge, setChallenge] = useState(initialChallenge);
 	const [code, setCode] = useState('');
-	const [error, setError] = useState('');
+	const [feedback, setFeedback] = useState<{
+		message: string;
+		variant: 'success' | 'error';
+	}>();
 	const [busy, setBusy] = useState(false);
 	const [tick, setTick] = useState(Date.now);
 
@@ -26,13 +29,13 @@ export function OtpForm({ initialChallenge, onVerify, onResend, restartAction }:
 	async function verify(event: FormEvent<HTMLFormElement>) {
 		event.preventDefault();
 		setBusy(true);
-		setError('');
+		setFeedback(undefined);
 
 		try {
 			await onVerify(challenge.challengeId, code);
 			setCode('');
 		} catch (error) {
-			setError((error as Error).message);
+			setFeedback({ message: (error as Error).message, variant: 'error' });
 		} finally {
 			setBusy(false);
 		}
@@ -40,14 +43,17 @@ export function OtpForm({ initialChallenge, onVerify, onResend, restartAction }:
 
 	async function resend() {
 		setBusy(true);
-		setError('');
+		setFeedback(undefined);
 
 		try {
 			setChallenge(await onResend(challenge.challengeId));
 			setCode('');
-			setError('A new code was sent. The previous code no longer works.');
+			setFeedback({
+				message: 'A new code was sent. The previous code no longer works.',
+				variant: 'success',
+			});
 		} catch (error) {
-			setError((error as Error).message);
+			setFeedback({ message: (error as Error).message, variant: 'error' });
 		} finally {
 			setBusy(false);
 		}
@@ -100,7 +106,7 @@ export function OtpForm({ initialChallenge, onVerify, onResend, restartAction }:
 					{busy ? 'Please wait…' : 'Verify and sign in'}
 				</Button>
 			</form>
-			{error && <Status>{error}</Status>}
+			{feedback && <Status variant={feedback.variant}>{feedback.message}</Status>}
 			<Button
 				variant="outline"
 				disabled={busy || remaining > 0 || expired}

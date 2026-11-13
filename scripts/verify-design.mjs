@@ -24,6 +24,45 @@ for (const file of [
 	for (const [name, token] of Object.entries(tokens.radius)) {
 		assert(css.includes(`--radius-${name}: ${token.$value};`), `${file}: radius ${name}`);
 	}
+	for (const [name, token] of Object.entries(tokens.layout)) {
+		assert(css.includes(`--${name}: ${token.$value};`), `${file}: layout ${name}`);
+	}
+	for (const [name, token] of Object.entries(tokens.shape)) {
+		assert(css.includes(`--radius-${name}: ${token.$value};`), `${file}: shape ${name}`);
+	}
+	for (const role of [
+		'page',
+		'page-small',
+		'section',
+		'component',
+		'report',
+		'ui',
+		'metadata',
+		'identifier',
+	]) {
+		const value = tokens.typography[role].$value;
+		assert(css.includes(`--text-${role}: ${value.fontSize};`), `${file}: type ${role}`);
+		assert(
+			css.includes(`--text-${role}--line-height: ${value.lineHeight};`),
+			`${file}: leading ${role}`,
+		);
+		assert(
+			css.includes(`--text-${role}--font-weight: ${value.fontWeight};`),
+			`${file}: weight ${role}`,
+		);
+	}
+	for (const [name, token] of Object.entries(tokens.semantic)) {
+		const value = token.$value;
+		const mapped = value.startsWith('{')
+			? `var(--${value.slice(1, -1).replace('.', '-')})`
+			: value;
+		assert(
+			css.includes(`--${name}: ${mapped};`) ||
+				(file.endsWith('theme.css') && css.includes(`--color-${name}: var(--${name});`)),
+			`${file}: semantic ${name}`,
+		);
+	}
+
 	for (const [role, value] of Object.entries({
 		caption: '1.5',
 		'body-sm': '1.33',
@@ -61,4 +100,27 @@ for (const [foreground, background] of [
 	console.info(`${foreground}/${background}: ${ratio.toFixed(2)}:1`);
 }
 
-console.info('Theme references and essential text contrast verified.');
+function resolveSemanticColor(name) {
+	const value = tokens.semantic[name].$value;
+
+	return value.startsWith('{') ? tokens.color[value.slice(7, -1)].$value : value;
+}
+
+for (const [foreground, background] of [
+	['input', 'background'],
+	['control-border', 'surface'],
+	['ring', 'background'],
+	['success', 'success-surface'],
+	['warning', 'warning-surface'],
+	['error', 'error-surface'],
+	['destructive-foreground', 'destructive'],
+]) {
+	const minimum = ['input', 'control-border', 'ring'].includes(foreground) ? 3 : 4.5;
+
+	assert(
+		contrast(resolveSemanticColor(foreground), resolveSemanticColor(background)) >= minimum,
+		`${foreground}/${background}`,
+	);
+}
+
+console.info('Theme references, typography, semantic states and essential contrast verified.');

@@ -88,7 +88,7 @@ export function LoginForm() {
 					{busy ? 'Sending code…' : signup ? 'Create account' : 'Continue'}
 				</Button>
 			</form>
-			{error && <Status>{error}</Status>}
+			{error && <Status variant="error">{error}</Status>}
 			<p className="text-sm text-muted-foreground">
 				{signup ? 'Already have an account?' : 'New here?'}{' '}
 				<Link to={signup ? '/login' : '/register'} state={loc.state}>

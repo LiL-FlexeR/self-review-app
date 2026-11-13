@@ -175,9 +175,11 @@ export function ProviderForm({
 						? 'Verify and replace credentials'
 						: 'Verify and save'}
 			</Button>
-			{save.error && <Status>{save.error.message}</Status>}
+			{save.error && <Status variant="error">{save.error.message}</Status>}
 			{save.isSuccess && (
-				<Status>Credentials verified and saved. Credentials are never displayed.</Status>
+				<Status variant="success">
+					Credentials verified and saved. Credentials are never displayed.
+				</Status>
 			)}
 		</form>
 	);

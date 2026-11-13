@@ -1,5 +1,5 @@
 import { NavLink, useLocation } from 'react-router';
-import { FolderKanban, Link2 } from 'lucide-react';
+import { ClipboardCheck, FolderKanban, Link2, LogOut, UserRound } from 'lucide-react';
 import { Button } from '@app/components/ui/Button';
 import {
 	Sidebar,
@@ -24,8 +24,9 @@ export function AppSidebar({ user, busy, onLogout }: IAppSidebarProps) {
 
 	return (
 		<Sidebar>
-			<SidebarHeader className="px-4 pt-8 pb-6">
-				<span className="font-medium tracking-[0.01em]">Self Review</span>
+			<SidebarHeader className="flex-row items-center gap-2 px-4 py-6">
+				<ClipboardCheck className="size-5" aria-hidden="true" />
+				<span className="font-medium">Self Review</span>
 			</SidebarHeader>
 			<SidebarContent className="px-4">
 				<nav aria-label="Main navigation">
@@ -39,7 +40,7 @@ export function AppSidebar({ user, busy, onLogout }: IAppSidebarProps) {
 										location.pathname === to ||
 										location.pathname.startsWith(to + '/')
 									}
-									className="rounded-xl px-3 text-base data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
+									className="h-11 rounded-xl px-3 text-ui data-[active=true]:bg-accent data-[active=true]:text-accent-foreground"
 								>
 									<NavLink to={to} onClick={() => setOpenMobile(false)}>
 										<Icon aria-hidden="true" />
@@ -51,12 +52,34 @@ export function AppSidebar({ user, busy, onLogout }: IAppSidebarProps) {
 					</SidebarMenu>
 				</nav>
 			</SidebarContent>
-			<SidebarFooter className="gap-3 px-4 py-8">
-				<p className="text-sm text-muted-foreground">Application account</p>
-				<p className="text-sm wrap-anywhere">{user.user.email}</p>
-				<Button variant="outline" disabled={busy} onClick={onLogout}>
+			<SidebarFooter className="gap-2 border-t p-4">
+				<div className="flex min-w-0 items-start gap-2">
+					<UserRound className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+					<div className="min-w-0 space-y-1">
+						<p className="text-ui font-medium">Application account</p>
+						<p className="text-ui wrap-anywhere text-muted-foreground">
+							{user.user.email}
+						</p>
+					</div>
+				</div>
+				<Button
+					variant="ghost"
+					className="justify-start"
+					disabled={busy}
+					onClick={onLogout}
+				>
+					<LogOut aria-hidden="true" />
 					{busy ? 'Signing out…' : 'Sign out'}
 				</Button>
+				<details className="min-w-0 text-ui text-muted-foreground">
+					<summary className="cursor-pointer rounded-button-quiet py-2 text-foreground">
+						Account and session help
+					</summary>
+					<p className="pt-2 pb-1">
+						Signing out prevents future renewal. Issued access tokens expire within 15
+						minutes. Accepted background work continues after sign-out.
+					</p>
+				</details>
 			</SidebarFooter>
 		</Sidebar>
 	);

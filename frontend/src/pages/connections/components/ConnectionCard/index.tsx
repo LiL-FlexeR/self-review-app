@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { Link } from 'react-router';
+import { Trash2 } from 'lucide-react';
 import type { z as zod } from 'zod';
 import type { ConnectionView } from '@self-review/contracts';
 import { auth, queryClient } from '@app/auth/session';
@@ -54,7 +55,9 @@ export function ConnectionCard({
 					Tracker token owner: {connection.sourceUserName} ({connection.sourceUserId})
 				</p>
 				{connection.warnings.map((warning) => (
-					<Status key={warning}>{warning}</Status>
+					<Status variant="warning" key={warning}>
+						{warning}
+					</Status>
 				))}
 				<p className="text-sm">
 					Verified {new Date(connection.verifiedAt).toLocaleString()}
@@ -116,7 +119,7 @@ export function ConnectionCard({
 						</SheetHeader>
 						{remove.error && (
 							<div className="px-4">
-								<Status>{remove.error.message}</Status>
+								<Status variant="error">{remove.error.message}</Status>
 							</div>
 						)}
 						<SheetFooter>
@@ -125,7 +128,12 @@ export function ConnectionCard({
 									Cancel
 								</Button>
 							</SheetClose>
-							<Button disabled={remove.isPending} onClick={() => remove.mutate()}>
+							<Button
+								variant="destructive"
+								disabled={remove.isPending}
+								onClick={() => remove.mutate()}
+							>
+								<Trash2 aria-hidden="true" />
 								{remove.isPending ? 'Deleting…' : 'Permanently delete local data'}
 							</Button>
 						</SheetFooter>

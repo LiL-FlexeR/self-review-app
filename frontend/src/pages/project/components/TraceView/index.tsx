@@ -26,9 +26,9 @@ export function TraceView({ runId, userId }: { runId: string; userId: string }) 
 		<details className="rounded-xl border p-4">
 			<summary className="cursor-pointer">Safe execution trace · {runId.slice(0, 8)}</summary>
 			<div className="mt-3 space-y-3">
-				{trace.isPending && <Status>Loading saved trace…</Status>}
-				{trace.error && <Status>{trace.error.message}</Status>}
-				<pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words text-xs">
+				{trace.isPending && <Status variant="loading">Loading saved trace…</Status>}
+				{trace.error && <Status variant="error">{trace.error.message}</Status>}
+				<pre className="max-h-80 overflow-auto whitespace-pre-wrap break-words text-metadata">
 					{JSON.stringify(trace.data?.items, null, 2)}
 				</pre>
 				<div className="flex gap-2">

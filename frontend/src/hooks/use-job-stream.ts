@@ -1,23 +1,43 @@
 import { useEffect, useState } from 'react';
 import { auth, queryClient } from '@app/auth/session';
 import { JobSubscription } from '@app/lib/job-subscription';
+import type { TJobConnectionState } from '@app/lib/job-subscription';
 
 export function useJobStream(
 	runId: string | undefined,
 	userId: string | undefined,
 	projectId: string,
 ) {
-	const [status, setStatus] = useState('');
+	const [update, setUpdate] = useState<{
+		runId: string;
+		userId: string;
+		cycle: number;
+		status?: string;
+		connection?: TJobConnectionState;
+	}>();
 	const [cycle, setCycle] = useState(0);
 	useEffect(() => {
 		if (!runId || !userId) {
 			return;
 		}
 		const initialIdentity = auth.snapshot();
+		const updateTransport = (patch: { status?: string; connection?: TJobConnectionState }) =>
+			setUpdate((previous) => ({
+				...(previous?.runId === runId &&
+				previous.userId === userId &&
+				previous.cycle === cycle
+					? previous
+					: {}),
+				runId,
+				userId,
+				cycle,
+				...patch,
+			}));
 		const subscription = new JobSubscription({
 			runId,
 			read: () => auth.request(`/jobs/${runId}`),
-			onStatus: setStatus,
+			onStatus: (status) => updateTransport({ status }),
+			onConnection: (connection) => updateTransport({ connection }),
 			connect: (callbacks) => {
 				const stream = new EventSource(`/api/jobs/${runId}/events`);
 				stream.onopen = callbacks.open;
@@ -53,5 +73,11 @@ export function useJobStream(
 			subscription.stop();
 		};
 	}, [runId, userId, projectId, cycle]);
-	return { status, reconnect: () => setCycle((previous) => previous + 1) };
+	const isCurrent =
+		update?.runId === runId && update?.userId === userId && update?.cycle === cycle;
+	return {
+		status: isCurrent ? update?.status : '',
+		connection: isCurrent ? (update?.connection ?? 'checking') : 'checking',
+		reconnect: () => setCycle((previous) => previous + 1),
+	};
 }

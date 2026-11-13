@@ -25,11 +25,12 @@ export function ConnectionsPage() {
 	});
 	return (
 		<AppShell
+			contentWidth="connections"
 			title="Connections"
 			description="Connect your work to build an evidence-based self-review."
 		>
-			{connections.isPending && <Status>Loading connections…</Status>}
-			{connections.error && <Status>{connections.error.message}</Status>}
+			{connections.isPending && <Status variant="loading">Loading connections…</Status>}
+			{connections.error && <Status variant="error">{connections.error.message}</Status>}
 			<div className="space-y-6">
 				{identity &&
 					connections.data?.items.map((connection) => (
@@ -82,7 +83,7 @@ export function ConnectionsPage() {
 								<Button disabled={add.isPending} onClick={() => add.mutate()}>
 									Add demo source
 								</Button>
-								{add.error && <Status>{add.error.message}</Status>}
+								{add.error && <Status variant="error">{add.error.message}</Status>}
 							</CardContent>
 						</Card>
 					)}
