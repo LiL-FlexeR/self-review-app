@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 
 export function docker(args) {
 	const env = { ...process.env };
@@ -18,6 +19,7 @@ export function docker(args) {
 
 	const result = spawnSync('docker', [...(host ? ['--host=' + host] : []), ...args], {
 		stdio: 'inherit',
+		cwd: fileURLToPath(new URL('..', import.meta.url)),
 		env,
 	});
 

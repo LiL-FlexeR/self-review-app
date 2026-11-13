@@ -24,7 +24,7 @@ flowchart LR
 
 The API authenticates users and accepts commands. The worker executes sync/review independently of the browser tab. Postgres is the source of truth for tasks, runs, results, and refresh-token state. Redis handles the queue, OTP challenges, and rate limits. Access uses JWT cookies under [D04](../decisions/D04-auth-and-credentials.md#limits-and-sessions); no Redis authentication-session store is required. SSE delivers state; it does not store results. Import covers the whole period without a task-count cap; analysis and review process batches and record coverage. [States, idempotency, and recovery](sync-workflow.md).
 
-Docker Compose runs api, worker, postgres, redis, mailpit, and a one-shot migration service. The API and worker share an image with different entrypoints; the API serves the built frontend at localhost:3000 without another reverse proxy. During development, Vite :5173 proxies /api, including SSE. One origin simplifies cookie authentication. `APP_PORT` may override the published Compose port (default 3000); set `APP_ORIGIN` to the matching browser origin. This does not change the internal API port.
+Backend owns `Dockerfile`, `Dockerfile.dockerignore`, `compose.yaml`, `compose.infra.yaml`, and Docker helper scripts under `backend/`. Root npm commands delegate to backend. Compose explicitly keeps project names `self-review-app` and `self-review-infra`; moving the files does not change the existing named volumes. Custom installations retain their previous `-p` override. Docker Compose runs api, worker, postgres, redis, mailpit, and a one-shot migration service. The API and worker share an image with different entrypoints; the API serves the built frontend at localhost:3000 without another reverse proxy. During development, Vite :5173 proxies /api, including SSE. One origin simplifies cookie authentication. `APP_PORT` may override the published Compose port (default 3000); set `APP_ORIGIN` to the matching browser origin. The container API port stays 3000 even when `PORT` configures another host-development port.
 
 APP_ORIGIN identifies the browser-facing origin: http://localhost:3000 for Compose and http://localhost:5173 for the Vite development flow. Route browser API/SSE traffic through the matching origin/proxy and validate the original browser Origin header; rewriting the proxy Host does not replace this check. Use the chosen hostname consistently for host-only cookies.
 
@@ -89,7 +89,7 @@ Do not add a second monorepo tool on top of npm. The provider interface normaliz
 
 Nest owns the backend application dependency graph. AppModule, AuthModule, ConfigModule, InfrastructureModule, and WorkerModule use static module metadata. ConfigModule lives beside ConfigService in `shared/config/`; InfrastructureModule lives in `shared/infrastructure/`. Root and feature modules remain under `modules/`. AuthModule imports ConfigModule/InfrastructureModule and registers AuthService, ChallengesService, CryptoService, PasswordHashService, and AuthController. The API bootstrap creates AppModule and configures HTTP middleware/static routing; it does not create application services or pass an already-constructed AuthService through `register()`. The global SafeErrorsFilter is registered through `APP_FILTER` in AppModule. Expected HTTP failures use the standard Nest exception classes with explicit public `{code,message,retryable}` payloads. The filter validates these payloads against the contracts error schema and adds requestId; unstructured HttpExceptions keep their status with a generic HTTP_ERROR body, while unknown infrastructure failures retain the safe retryable 503 response. Raw error bodies/causes are not forwarded. WorkerModule imports JobsModule and the same infrastructure module, starts ProcessorService with concurrency=1/maxStalledCount=0, and owns its readiness provider. JobsModule wires queue/reconciliation, scoped jobs, the shared ReviewService, AgentService, SourcesService, the provider registry (fixtures/Linear/ClickUp/Jira), and ModelClient; ProjectsModule exposes authenticated HTTP/SSE resources.
 
-The custom ConfigService in `backend/src/shared/config/config.service.ts` reads and validates the existing environment once per application context, using the existing Zod schema and independent-secret checks in `config.schema.ts`. It exposes immutable validated values and a typed getter. Node's existing `--env-file`/Compose environment handling remains the source of environment loading; no additional configuration package or alternate validation policy is introduced.
+The custom ConfigService in `backend/src/shared/config/config.service.ts` reads and validates the existing environment once per application context, using the existing Zod schema and independent-secret checks in `config.schema.ts`. It exposes immutable validated values and a typed getter. Node loads `backend/.env` for API/worker development and Prisma commands; migration/generation in containers also work from the injected environment without a local file. Existing process variables take precedence. Compose uses the same backend file for interpolation and runtime injection. `npm run setup` preserves workspace env files and moves a legacy root `.env` unchanged, refusing an ambiguous duplicate rather than rotating keys. Vite explicitly loads `frontend/.env` for its dev-only `DEV_API_PORT`; built clients continue using same-origin `/api`. No additional configuration package or alternate validation policy is introduced.
 
 InfrastructureModule exports injectable DatabaseService, RedisService, MailService, and ClockService. Database and Redis connections initialize through `onModuleInit` before application readiness. Mail transport is owned by MailService. Each process/context closes its owned database, Redis, and mail resources through `onApplicationShutdown`; explicit `app.close()` and the entrypoints' enabled shutdown hooks use the same lifecycle. PasswordHashService prepares its dummy Argon2 hash in `onModuleInit` and owns Argon2 operations with the existing process-local concurrency limit. CryptoService injects ConfigService/ClockService and owns access-JWT/CSRF operations plus the auth module’s token, SHA-256, HMAC, and comparison helpers. AuthService coordinates authentication through these providers; callers do not pass secrets or signing/verification timestamps to CryptoService. The worker publishes its readiness file only after initialization and successful database/Redis probes, starts queue processing after these checks, and removes the marker on shutdown.
 
@@ -183,7 +183,8 @@ Check ownership through relations on every read/write, including SSE and export;
 | Browser cookies | Access JWT and opaque refresh token in separate HttpOnly cookies, plus the pre-auth browser binding until OTP verification; token values are unavailable to frontend JavaScript |
 | Frontend memory | Display data, filters, authentication expiry metadata, and the CSRF token; no access/refresh tokens or tracker credentials |
 | Mailpit / email inbox | OTP messages for the user to read; the email contains the code itself but is not the application's authentication store |
-| Local .env | AUTH_SECRET, JWT_SECRET, TOKEN_ENCRYPTION_KEY, OpenAI/SMTP credentials; backend/runtime only, outside Git and Docker image layers |
+| Local backend/.env | AUTH_SECRET, JWT_SECRET, TOKEN_ENCRYPTION_KEY, OpenAI/SMTP credentials; backend/runtime only, outside Git and Docker image layers |
+| Local frontend/.env | DEV_API_PORT for the Vite dev proxy; no backend secrets or production API override |
 | Docker volumes | Persistent Postgres files and Redis AOF; stopping containers without deleting volumes preserves them |
 
 There is no separate Sources SQL table in the MVP: sourceId refers to TaskSnapshot metadata/description or a CommentSnapshot. Claims store sourceId and quote inside validated analysis/report JSON. The coverage envelope contains counters/flags and batch references. Full task lists and traces are paginated; report sources contain cited records, not every project description. Model Sources are built from these records, and excerpt exposure is checked during execution.
@@ -259,7 +260,7 @@ Email delivery is configured separately from APP_MODE: Mailpit is the default SM
 | REDIS_PREFIX | Namespaces OTP/rate-limit keys; tests use a separate Redis DB and fixed prefix |
 | APP_ORIGIN | Browser-facing Origin allowlist: http://localhost:3000 for Compose, http://localhost:5173 for Vite dev; not the proxied backend Host |
 
-Keep the root .env outside Git. Do not use VITE_ for secrets or inject them into Docker build args/image layers. Pin image and package versions; startup must not use latest. The main Compose setup does not expose Postgres/Redis externally; app and Mailpit UI bind to 127.0.0.1. A development profile can expose infrastructure ports on loopback when needed.
+Keep both workspace env files outside Git. The backend `Dockerfile.dockerignore` excludes env files at every depth of the repository-root build context, including both workspace files. Do not use VITE_ for secrets or inject them into Docker build args/image layers. Pin image and package versions; startup must not use latest. The main Compose setup does not expose Postgres/Redis externally; app and Mailpit UI bind to 127.0.0.1. A development profile can expose infrastructure ports on loopback when needed.
 
 ## Commands
 
@@ -267,13 +268,14 @@ Commands use the root npm workspaces and isolated integration infrastructure. La
 
 | Command | Purpose |
 | --- | --- |
-| docker compose up --build | Complete local startup; migrate deploy before API/worker |
-| docker compose down | Stop without deleting volumes; volume deletion is a separate explicit action |
+| npm run docker:up | Complete local startup; migrate deploy before API/worker |
+| npm run docker:down | Stop without deleting volumes; volume deletion is a separate explicit action |
 | npm ci | Install from the lockfile after S01 |
 | npm run infra:up / infra:down | Development/test Postgres, Redis, Mailpit |
+| npm run db:migrate | Apply committed migrations against backend/.env |
 | npm run db:migrate:dev | Develop migrations using the local development DB only |
 | npm run db:migrate:test | Apply migrations to an isolated test DB |
-| npm run dev | Build contracts + backend API/worker watch + frontend Vite; mode from .env |
+| npm run dev | Build contracts + backend API/worker watch + frontend Vite; mode from backend/.env; dev proxy from frontend/.env |
 | npm run check | Formatting, workspace types, lint, Prisma schema and design-token validation |
 | npm run test:unit | Vitest without external accounts |
 | npm run test:integration | Supertest + isolated real Postgres/Redis/BullMQ; SMTP and external model/provider boundaries are synthetic |

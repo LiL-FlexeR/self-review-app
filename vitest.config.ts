@@ -21,6 +21,10 @@ export default defineConfig({
 		projects: [
 			{
 				extends: true,
+				test: { name: 'scripts', include: ['scripts/tests/**/*.test.ts'] },
+			},
+			{
+				extends: true,
 				resolve: {
 					alias: { '@app': fileURLToPath(new URL('./backend/src', import.meta.url)) },
 				},

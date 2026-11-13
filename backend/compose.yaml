@@ -1,8 +1,13 @@
+name: self-review-app
+
 x-app: &app
   image: self-review-app:s06
-  build: .
+  build: &build
+    context: ..
+    dockerfile: backend/Dockerfile
   env_file: .env
   environment:
+    PORT: 3000
     APP_ORIGIN: ${APP_ORIGIN:-http://localhost:3000}
     DATABASE_URL: postgresql://self_review:local_dev@postgres:5432/self_review
     REDIS_URL: redis://redis:6379/0
@@ -35,7 +40,7 @@ services:
     healthcheck: { test: ['CMD', '/mailpit', 'readyz'], interval: 2s, timeout: 3s, retries: 30 }
   migrate:
     image: self-review-app:s06
-    build: .
+    build: *build
     environment: { DATABASE_URL: 'postgresql://self_review:local_dev@postgres:5432/self_review' }
     command: ['npm', 'run', 'migrate', '-w', 'backend']
     depends_on:

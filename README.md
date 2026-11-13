@@ -32,39 +32,43 @@ Use a browser with Web Locks on localhost/HTTPS. Tokens stay in HttpOnly cookies
 git clone https://github.com/LiL-FlexeR/self-review-app.git
 cd self-review-app
 npm run setup
-docker compose up -d --build --wait
+npm run docker:up
 ```
 
-`setup` creates a gitignored, mode-0600 `.env` with three independent random secrets, preserving an existing file. Alternatively copy `.env.example` and generate each secret independently with `openssl rand -base64 32`. Migration completes before API/worker startup. Never commit `.env`.
+`setup` creates gitignored, mode-0600 `backend/.env` and `frontend/.env` from their workspace examples. Backend secrets are generated independently; existing workspace files are preserved. When upgrading, an existing root `.env` is moved unchanged to `backend/.env`, retaining signing/encryption keys and configured credentials. If both files exist, setup stops before overwriting either; resolve that duplicate explicitly. Alternatively copy both workspace `.env.example` files and generate each backend secret independently with `openssl rand -base64 32`. Never commit local env files. Migration completes before API/worker startup.
+
+Docker configuration and helpers live in `backend/`; the image still builds all three workspaces from the repository root and Nest serves the built frontend. `npm run docker -- <arguments>` forwards commands to `backend/compose.yaml` using `backend/.env`, independently of the caller's Compose working directory. The default project names remain `self-review-app` and `self-review-infra`, preserving their existing Postgres/Redis volumes. If an installation used a custom project name, keep it with `npm run docker -- -p <existing-name> up -d --build --wait`. Stopping containers retains volumes; do not pass `--volumes` or `-v` when keeping data.
+
+`backend/.env` owns server, database, queue, model and mail configuration. `frontend/.env` contains `DEV_API_PORT` for Vite's local `/api` proxy; it is not added to the browser bundle. Production browser requests use same-origin `/api`. Keep credentials in backend configuration; `VITE_` variables are browser-visible.
 
 Open [localhost:3000](http://localhost:3000), create an account, open the email in [Mailpit :8025](http://localhost:8025), and enter the OTP. On Connections, choose **Add demo source**, browse Projects, and open **Demo platform**. Mailpit captures local messages; it does not deliver them to a real inbox. External SMTP is configurable but not live-verified.
 
-If port 3000 is occupied, use `APP_PORT=3001 APP_ORIGIN=http://localhost:3001 docker compose up --build`, then open [localhost:3001](http://localhost:3001). Cookies require a consistent hostname; use localhost throughout. Stop with `docker compose down` (volumes retained). Compose and the development infrastructure share Mailpit ports, so stop one before starting the other.
+If port 3000 is occupied, use `APP_PORT=3001 APP_ORIGIN=http://localhost:3001 npm run docker -- up --build`, then open [localhost:3001](http://localhost:3001). Cookies require a consistent hostname; use localhost throughout. Stop with `npm run docker:down` (volumes retained). Compose and the development infrastructure share Mailpit ports, so stop one before starting the other.
 
 For host/Vite development:
 
 ```bash
 npm ci
 npm run infra:up
-node --env-file=.env node_modules/prisma/build/index.js migrate deploy --config backend/prisma.config.ts
+npm run db:migrate
 APP_ORIGIN=http://localhost:5173 SMTP_HOST=localhost npm run dev
 ```
 
-If the backend port is occupied, prefix the dev command with `PORT=3002 DEV_API_PORT=3002`; keep `APP_ORIGIN=http://localhost:5173`.
+If the backend port is occupied, set `PORT=3002` in `backend/.env` and `DEV_API_PORT=3002` in `frontend/.env`; keep `APP_ORIGIN=http://localhost:5173` for the dev command. Shell environment overrides still take precedence.
 
-Open [localhost:5173](http://localhost:5173); Vite proxies `/api` to port 3000 without rewriting Origin. `DATABASE_URL` in the generated `.env` targets the loopback dev database. Test migration/test scripts always select a separate `self_review_test` DB, Redis DB 15, and `s01-test:` prefix. They never inherit user-data endpoints. `infra:down` stops without deleting volumes. A managed Linux executor may select its daemon with `SELF_REVIEW_DOCKER_HOST=unix:///var/run/docker.sock` for the infra scripts.
+Open [localhost:5173](http://localhost:5173); Vite proxies `/api` to port 3000 without rewriting Origin. `DATABASE_URL` in `backend/.env` targets the loopback dev database. Test migration/test scripts always select a separate `self_review_test` DB, Redis DB 15, and `s01-test:` prefix. They never inherit user-data endpoints. `infra:down` stops without deleting volumes. A managed Linux executor may select its daemon with `SELF_REVIEW_DOCKER_HOST=unix:///var/run/docker.sock` for the Docker/infra scripts.
 
-For API/worker in Docker with the Vite frontend, stop the root `npm run dev` process and the separate development infrastructure first, then run:
+For API/worker in Docker with the Vite frontend, stop the root `npm run dev` process and the separate development infrastructure first. Set `DEV_API_PORT=3001` in `frontend/.env`, then run:
 
 ```bash
-APP_PORT=3001 APP_ORIGIN=http://localhost:5173 docker compose up -d --build --wait
+APP_PORT=3001 APP_ORIGIN=http://localhost:5173 npm run docker:up
 npm run build -w contracts
-DEV_API_PORT=3001 npm run dev -w frontend
+npm run dev -w frontend
 ```
 
-Keep using the same Compose project name (`-p` if previously specified). Open [localhost:5173](http://localhost:5173); browser requests to `/api` remain on that origin and Vite forwards them to the published API port. API code changes require a Compose rebuild. The API keeps port 3000 inside its container; APP_PORT changes only its host mapping.
+The Compose project name remains `self-review-app` (`-p` if previously overridden). Open [localhost:5173](http://localhost:5173); browser requests to `/api` remain on that origin and Vite forwards them to the published API port. API code changes require a Compose rebuild. The API keeps port 3000 inside its container; APP_PORT changes only its host mapping.
 
-`--wait` checks API readiness, including SMTP connectivity/authentication from the API container without sending a message. Mailpit's own healthcheck only checks its internal readiness; it does not prove that API can reach it. A readiness failure prevents reporting a successful startup, but does not automatically repair Docker networking or prove email delivery to a recipient. Inspect `docker compose ps` and `docker compose logs api mailpit`. If an existing Mailpit container has lost its Compose network attachment, recover just that service with `docker compose up -d --force-recreate --no-deps --wait mailpit`, then repeat the startup command. This recreates Mailpit's temporary mailbox; Postgres/Redis volumes are retained.
+`--wait` checks API readiness, including SMTP connectivity/authentication from the API container without sending a message. Mailpit's own healthcheck only checks its internal readiness; it does not prove that API can reach it. A readiness failure prevents reporting a successful startup, but does not automatically repair Docker networking or prove email delivery to a recipient. Inspect `npm run docker -- ps` and `npm run docker -- logs api mailpit`. If an existing Mailpit container has lost its Compose network attachment, recover just that service with `npm run docker -- up -d --force-recreate --no-deps --wait mailpit`, then repeat the startup command. This recreates Mailpit's temporary mailbox; Postgres/Redis volumes are retained.
 
 Runtime modes:
 
@@ -74,7 +78,7 @@ Runtime modes:
 | demo | Synthetic source + real OpenAI | OPENAI_API_KEY on the worker |
 | live | Linear, ClickUp or Jira Cloud + OpenAI; fixture creation is rejected | OpenAI on the worker; tracker credentials entered in the UI |
 
-For Linear, set `APP_MODE=live` and `OPENAI_API_KEY` in the server `.env`, then rebuild/recreate API and worker. After password + OTP, open Connections, enter a connection name and a personal Read key, and choose **Verify and connect**. Browse Projects and use **Load more projects** to reach later catalog pages, including accessible archived projects. Sync uses UTC task creation dates, every status and assignee; review uses only tasks assigned to the verified token owner. Replace a key only for the same Linear user and workspace. Confirmed connection deletion removes its local projects, snapshots and reports and is blocked while a job is active; it does not revoke the key in Linear. Never paste keys into chat or commit private tickets.
+For Linear, set `APP_MODE=live` and `OPENAI_API_KEY` in the server `backend/.env`, then rebuild/recreate API and worker. After password + OTP, open Connections, enter a connection name and a personal Read key, and choose **Verify and connect**. Browse Projects and use **Load more projects** to reach later catalog pages, including accessible archived projects. Sync uses UTC task creation dates, every status and assignee; review uses only tasks assigned to the verified token owner. Replace a key only for the same Linear user and workspace. Confirmed connection deletion removes its local projects, snapshots and reports and is blocked while a job is active; it does not revoke the key in Linear. Never paste keys into chat or commit private tickets.
 
 For ClickUp, enter a personal API token. The catalog shows Lists with workspace/Space/Folder breadcrumbs, including accessible archived containers. Sync explicitly requests closed tasks, subtasks, Tasks in Multiple Lists and accessible archived tasks; multiple assignees are retained. Review describes the API-confirmed token owner.
 
@@ -99,12 +103,14 @@ npm run lint
 API and worker write Winston JSON logs. Read them with:
 
 ```bash
-docker compose logs -f api worker
+npm run docker -- logs -f api worker
 ```
 
-Set `LOG_LEVEL=info` (default), `warn`, `error`, or `debug` in the server `.env` and recreate API/worker to apply it. HTTP error logs share the response's `X-Request-Id`/`requestId`; worker/agent logs carry `runId`/`batchId`. An `evidence_validation_failed` event identifies the reason (for example `QUOTE_NOT_FOUND`) and includes the rejected claim/evidence, compared source excerpt, and comparison details. These server diagnostics contain task/result text with credential redaction. The public safe execution trace remains compact. Follow execution with `docker compose logs -f worker`: `model_request_started/completed/failed`, `tool_started/completed/failed`, `validation_failed`, `output_correction_requested` and terminal events share run/batch/attempt identifiers. Request/output byte counts, durations, usage and schema issue paths identify the boundary that failed. The owner trace is checkpointed while work runs and survives interruption; full prompts/model output and hidden reasoning are excluded. Full behavior and boundaries: [server logging](docs/architecture/overview.md#server-logging).
+Set `LOG_LEVEL=info` (default), `warn`, `error`, or `debug` in the server `backend/.env` and recreate API/worker to apply it. HTTP error logs share the response's `X-Request-Id`/`requestId`; worker/agent logs carry `runId`/`batchId`. An `evidence_validation_failed` event identifies the reason (for example `QUOTE_NOT_FOUND`) and includes the rejected claim/evidence, compared source excerpt, and comparison details. These server diagnostics contain task/result text with credential redaction. The public safe execution trace remains compact. Follow execution with `npm run docker -- logs -f worker`: `model_request_started/completed/failed`, `tool_started/completed/failed`, `validation_failed`, `output_correction_requested` and terminal events share run/batch/attempt identifiers. Request/output byte counts, durations, usage and schema issue paths identify the boundary that failed. The owner trace is checkpointed while work runs and survives interruption; full prompts/model output and hidden reasoning are excluded. Full behavior and boundaries: [server logging](docs/architecture/overview.md#server-logging).
 
 ## Verification
+
+If the main Compose application is already running, use `npm run infra:up -- postgres redis` to start only the isolated test storage services and avoid a second Mailpit on port 8025. The integration suite substitutes mail delivery.
 
 ```bash
 npm ci
@@ -130,14 +136,14 @@ Manual S01 check: signup → Mailpit → OTP → protected shell → open a seco
 4. Choose **Create self-review**, or request automatic review on a new sync. The subject is **Anna / demo-anna**, with **5 qualifying tasks**. Export the saved JSON and Markdown.
 5. Select DEMO-101 and **Refresh selected**. Confirm the base snapshot and optional review. A new snapshot contains one refreshed task and copies retaining original timestamps. Historical reports remain accessible through snapshot history.
 6. Open **137-task pagination example**, synchronize, and browse every task page. All 137 tasks and 14 analysis leaves are processed; review reduction includes the last batch.
-7. Close/reopen the project URL during work. Restart only the API with `docker compose restart api`, then reopen the saved project URL. Saved data remains. Reconnect only reads persisted progress and does not start model work.
+7. Close/reopen the project URL during work. Restart only the API with `npm run docker -- restart api`, then reopen the saved project URL. Saved data remains. Reconnect only reads persisted progress and does not start model work.
 8. Open the same project in a second tab. Sign out in the first tab: both tabs must clear the account. Register/sign in as a second user with a new Mailpit OTP; the first user's connections, tasks and reports must not appear. Follow the complete [S06 manual scenario](docs/stages/S06-submission.md#evaluators-manual-scenario) for renewal, errors, keyboard and narrow-screen checks. Automated expiry/concurrency results and actual manual observations are recorded separately in ROADMAP.
 
 Generation uses the configured model and can incur new usage. Opening/exporting never generates. Partial-source review requires explicit acknowledgment; failed regeneration preserves the old valid report.
 
-For live-model verification, set `APP_MODE=demo` and `OPENAI_API_KEY` in the gitignored server `.env`, then recreate API/worker. The pinned model is `gpt-5.4-mini-2026-03-17`, reasoning `low`, with no fallback. Repeat Demo platform and Description evidence example; inspect actual comment choices and quotations. See ROADMAP for the latest executed live-model checks and remaining limitations. Never put the key into a `VITE_` variable or a request body.
+For live-model verification, set `APP_MODE=demo` and `OPENAI_API_KEY` in the gitignored server `backend/.env`, then recreate API/worker. The pinned model is `gpt-5.4-mini-2026-03-17`, reasoning `low`, with no fallback. Repeat Demo platform and Description evidence example; inspect actual comment choices and quotations. See ROADMAP for the latest executed live-model checks and remaining limitations. Never put the key into a `VITE_` variable or a request body.
 
-For Docker with Vite, apply these environment changes with `APP_PORT=3001 APP_ORIGIN=http://localhost:5173 docker compose up -d --force-recreate --wait api worker`. Keep dependency startup enabled: `--no-deps` is appropriate only when Postgres, Redis, and Mailpit are already running and ready. OPENAI_MODEL must match the exact pinned snapshot above; other values fail configuration validation before startup.
+For Docker with Vite, apply these environment changes with `APP_PORT=3001 APP_ORIGIN=http://localhost:5173 npm run docker -- up -d --force-recreate --wait api worker`. Keep dependency startup enabled: `--no-deps` is appropriate only when Postgres, Redis, and Mailpit are already running and ready. OPENAI_MODEL must match the exact pinned snapshot above; other values fail configuration validation before startup.
 
 ## Example result
 

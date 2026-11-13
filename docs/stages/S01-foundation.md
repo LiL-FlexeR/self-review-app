@@ -10,7 +10,7 @@ Required UI context: read every source in [Frontend design inputs](README.md#fro
 
 - Three workspace packages at the root: backend, frontend, contracts. backend contains API/worker entrypoints, Prisma, and fixtures; contracts contains only public HTTP/SSE schemas. Node/ESM/strict TS, selected package/image versions, and a shared lockfile follow [D01](../decisions/D01-stack-and-local-runtime.md).
 - Compose: Postgres, Redis AOF/noeviction, Mailpit, API/worker image, and migration startup. Health checks, volumes, and loopback, without public database/Redis ports.
-- Prisma schema/migrations, including AuthSession/RefreshToken, the review source-sync relation, provider-slot/activity-slot uniqueness, AnalysisBatch, and per-unit attempts/coverage, follow the [architecture](../architecture/overview.md#data); shared Zod contracts, .env.example, and scripts. Keep the selected Prisma major from D01 unless a separate compatibility review changes it.
+- Prisma schema/migrations, including AuthSession/RefreshToken, the review source-sync relation, provider-slot/activity-slot uniqueness, AnalysisBatch, and per-unit attempts/coverage, follow the [architecture](../architecture/overview.md#data); shared Zod contracts, backend/frontend .env.example files, and scripts. Keep the selected Prisma major from D01 unless a separate compatibility review changes it.
 - Authentication follows [D04](../decisions/D04-auth-and-credentials.md): signup/login, pre-auth challenge, email, verify/resend, JWT access, Postgres-backed refresh rotation, CSRF bootstrap, and logout. Pin a maintained JWT library and validate the independent signing secret at startup. Add the coordinated frontend renewal flow from [frontend data flow](../architecture/overview.md#frontend-data-flow), including same-origin lock availability in the supported local browser.
 - Login/registration/OTP UI and a protected application shell using the confirmed React Router, TanStack Query, and shadcn/ui choices. Set up Tailwind, theme CSS, aliases, and components.json inside frontend according to [frontend UI](../architecture/overview.md#frontend-ui); record the pinned CLI/preset and component source origins. Nodemailer → Mailpit without an external account.
 
@@ -41,7 +41,7 @@ npm run check
 npm run test:unit
 npm run test:integration
 npm run build
-docker compose up --build
+npm run docker:up
 ```
 
 Run signup → Mailpit email → OTP → protected page → access renewal → logout → login/password/OTP again. Check the old code and direct access before verify. Confirm two same-origin tabs do not race automatic refresh and do not retain the previous account's cached data. Record the tested browser/version and actual results without secret values; verify expiry automatically with a controlled test clock rather than changing the agreed default lifetimes.

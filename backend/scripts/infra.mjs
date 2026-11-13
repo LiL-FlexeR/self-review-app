@@ -12,5 +12,5 @@ docker([
 	'self-review-infra',
 	'-f',
 	'compose.infra.yaml',
-	...(cmd === 'up' ? ['up', '-d', '--wait'] : ['down']),
+	...(cmd === 'up' ? ['up', '-d', '--wait', ...process.argv.slice(3)] : ['down']),
 ]);

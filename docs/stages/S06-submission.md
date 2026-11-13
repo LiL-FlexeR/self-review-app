@@ -16,7 +16,7 @@ Required UI context: read every source in [Frontend design inputs](README.md#fro
 
 ## Evaluator's manual scenario
 
-1. Clean checkout → .env/secrets → docker compose up --build. App at :3000, Mailpit at :8025; migrations finish before the app/worker starts.
+1. Clean checkout → npm run setup → workspace env files/secrets → npm run docker:up. App at :3000, Mailpit at :8025; migrations finish before the app/worker starts.
 2. Signup with email/password → open the OTP email → verify. The project is inaccessible before OTP.
 3. Offline: add a demo connection, find Demo Platform, select October, run sync, and see SSE and saved tasks.
 4. Close the page during work and return; the saved status and result are accessible. Restarting the API does not lose snapshots.
@@ -44,7 +44,7 @@ npm run check
 npm run test:unit
 npm run test:integration
 npm run build
-docker compose up --build
+npm run docker:up
 ```
 
 Repeat checks after a new change, failure, or clean installation. Save actual automated check and manual smoke-test results rather than recording success based on a plan alone.

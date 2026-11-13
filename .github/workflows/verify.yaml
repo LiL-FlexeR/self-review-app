@@ -28,6 +28,7 @@ jobs:
           npm install --global npm@11.13.0
           npm ci --fetch-retries=0 --fetch-timeout=30000
       - run: npm run setup
+      - run: npm run docker -- config --quiet
       - run: npm run infra:up
       - run: npm run db:migrate:test
       - run: npm run check

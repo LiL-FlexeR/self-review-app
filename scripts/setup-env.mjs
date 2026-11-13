@@ -1,20 +1,43 @@
-import { readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, renameSync, chmodSync } from 'node:fs';
 import { randomBytes } from 'node:crypto';
 
-if (existsSync('.env')) {
-	console.info('.env already exists; preserved.');
-	process.exit(0);
+const rootDirectory = new URL('../', import.meta.url);
+const legacyEnvPath = new URL('.env', rootDirectory);
+const backendEnvPath = new URL('backend/.env', rootDirectory);
+
+if (existsSync(legacyEnvPath)) {
+	if (existsSync(backendEnvPath)) {
+		throw Error(
+			'Both .env and backend/.env exist. Resolve the duplicate before running setup.',
+		);
+	}
+
+	// Keep existing signing/encryption keys so sessions and stored credentials remain usable.
+	renameSync(legacyEnvPath, backendEnvPath);
+	chmodSync(backendEnvPath, 0o600);
+	console.info('Moved existing .env to backend/.env; all values preserved.');
 }
 
-let content = readFileSync('.env.example', 'utf8');
+for (const workspace of ['backend', 'frontend']) {
+	const envPath = new URL(workspace + '/.env', rootDirectory);
 
-for (const key of ['AUTH_SECRET', 'JWT_SECRET', 'TOKEN_ENCRYPTION_KEY']) {
-	content = content.replace(
-		new RegExp('^' + key + '=$', 'm'),
-		key + '=' + randomBytes(32).toString('base64'),
-	);
+	if (existsSync(envPath)) {
+		console.info(workspace + '/.env already exists; preserved.');
+		continue;
+	}
+
+	let content = readFileSync(new URL(workspace + '/.env.example', rootDirectory), 'utf8');
+
+	if (workspace === 'backend') {
+		for (const key of ['AUTH_SECRET', 'JWT_SECRET', 'TOKEN_ENCRYPTION_KEY']) {
+			content = content.replace(
+				new RegExp('^' + key + '=$', 'm'),
+				key + '=' + randomBytes(32).toString('base64'),
+			);
+		}
+	}
+
+	writeFileSync(envPath, content, { mode: 0o600, flag: 'wx' });
+
+	console.info('Created ' + workspace + '/.env.');
 }
-
-writeFileSync('.env', content, { mode: 0o600, flag: 'wx' });
-
-console.info('Created local .env with independent secrets.');
