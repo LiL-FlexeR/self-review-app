@@ -73,7 +73,7 @@ function DialogContent({
 					}
 				}}
 				className={cn(
-					'fixed top-1/2 left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] max-w-lg -translate-x-1/2 -translate-y-1/2 gap-6 overflow-y-auto rounded-dialog border bg-background p-4 duration-200 md:p-6 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:max-w-lg',
+					'fixed top-[50dvh] left-1/2 z-50 grid max-h-[calc(100dvh-2rem)] w-[calc(100%-2rem)] min-w-0 max-w-[480px] -translate-x-1/2 -translate-y-1/2 gap-6 overflow-y-auto overscroll-contain rounded-dialog border bg-surface p-4 shadow-subtle duration-200 wrap-anywhere md:p-6 [&>*]:min-w-0 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95',
 					className,
 				)}
 				{...props}
@@ -114,7 +114,7 @@ function DialogFooter({
 	return (
 		<div
 			data-slot="dialog-footer"
-			className={cn('flex flex-col-reverse gap-2 sm:flex-row sm:justify-end', className)}
+			className={cn('flex flex-col gap-2 sm:flex-row sm:justify-end', className)}
 			{...props}
 		>
 			{children}
@@ -131,7 +131,7 @@ function DialogTitle({ className, ...props }: React.ComponentProps<typeof Dialog
 	return (
 		<DialogPrimitive.Title
 			data-slot="dialog-title"
-			className={cn('text-section font-medium', className)}
+			className={cn('text-component font-medium', className)}
 			{...props}
 		/>
 	);

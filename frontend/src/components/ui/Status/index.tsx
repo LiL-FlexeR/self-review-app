@@ -5,6 +5,7 @@ import { Alert, AlertDescription } from '@app/components/ui/Alert';
 type TStatusProps = {
 	children: ReactNode;
 	variant?: 'info' | 'loading' | 'success' | 'warning' | 'error';
+	announce?: boolean;
 };
 
 const STATUS_PRESENTATION = {
@@ -15,16 +16,37 @@ const STATUS_PRESENTATION = {
 	error: { icon: CircleX, label: 'Error', alertVariant: 'destructive' },
 } as const;
 
-export function Status({ children, variant = 'info' }: TStatusProps) {
+export function Status({ children, variant = 'info', announce = true }: TStatusProps) {
 	const presentation = STATUS_PRESENTATION[variant];
 	const Icon = presentation.icon;
 	const isError = variant === 'error';
+	const live = isError ? 'assertive' : 'polite';
+	const announcement = announce
+		? { role: isError ? 'alert' : 'status', 'aria-live': live }
+		: { role: 'note', 'aria-live': 'off' as const };
+	if (['info', 'loading', 'success'].includes(variant)) {
+		return (
+			<div
+				{...announcement}
+				aria-live={announce ? 'polite' : 'off'}
+				aria-atomic="true"
+				data-status={variant}
+				className={`flex items-start gap-3 py-2 text-ui wrap-anywhere ${variant === 'success' ? 'text-success' : 'text-muted-foreground'}`}
+			>
+				<Icon aria-hidden="true" className="mt-0.5 size-4 shrink-0" />
+				<div className="min-w-0 space-y-2">
+					<span className="sr-only">{presentation.label}: </span>
+					{children}
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<Alert
 			variant={presentation.alertVariant}
-			role={isError ? 'alert' : 'status'}
-			aria-live={isError ? 'assertive' : 'polite'}
+			{...announcement}
+			aria-live={announce ? live : 'off'}
 			aria-atomic="true"
 			data-status={variant}
 			className="wrap-anywhere"

@@ -3,6 +3,7 @@ import request from 'supertest';
 import OpenAI from 'openai';
 import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
+import { format, resolveConfig } from 'prettier';
 import { createTestApp } from './support/create-test-app.js';
 import type { IRuntime } from './support/create-test-app.js';
 import { config } from '@app/shared/config/config.schema';
@@ -101,6 +102,8 @@ it('runs authenticated sync, tools, automatic review, persisted SSE and exports'
 	const source = await runtime.db.jobRun.findUniqueOrThrow({ where: { id: sampleId } });
 	sampleReportId = source.currentReviewReportId!;
 	const report = ReviewView.parse((await get(`/reviews/${sampleReportId}`)).body);
+	expect(review.resultRef).toBe(report.id);
+	expect((await get(`/reviews/${review.resultRef}`)).status).toBe(200);
 	expect(report.subjectSourceUserId).toBe('demo-anna');
 	expect(report.markdown).toContain('1200');
 	expect(report.sources.every((source) => source.id.startsWith('sync:' + sampleId + ':'))).toBe(
@@ -147,17 +150,16 @@ it('runs authenticated sync, tools, automatic review, persisted SSE and exports'
 	);
 	await writeFile(
 		'docs/examples/offline-input.json',
-		JSON.stringify(
-			{
+		await format(
+			JSON.stringify({
 				mode: 'offline',
 				project: 'demo-platform',
 				selection: period,
 				subjectSourceUserId: 'demo-anna',
 				tasks: inputTasks,
-			},
-			null,
-			'\t',
-		) + '\n',
+			}),
+			{ ...(await resolveConfig('docs/examples/offline-input.json')), parser: 'json' },
+		),
 	);
 	await writeFile('docs/examples/offline-review.json', JSON.stringify(report, null, '\t') + '\n');
 	await writeFile('docs/examples/offline-review.md', report.markdown + '\n');
@@ -512,7 +514,14 @@ it('retains stale selected copies, requires partial acknowledgment and publishes
 		allowPartial: true,
 		idempotencyKey: randomUUID(),
 	});
-	expect((await terminal(review.body.runId)).state).toBe('partial');
+	const outcome = await terminal(review.body.runId);
+	expect(outcome.state).toBe('partial');
+	const reportResponse = await get(`/reviews/${outcome.resultRef}`);
+	expect(reportResponse.status).toBe(200);
+	const report = ReviewView.parse(reportResponse.body);
+	expect(report.reviewRunId).toBe(outcome.runId);
+	expect(report.sourceSyncRunId).toBe(partialId!);
+	expect(report.state).toBe('partial');
 });
 
 it('completes empty selection without model calls and reads description evidence without comments', async () => {
@@ -1117,6 +1126,7 @@ it('persists the exact schema constraint on correction and final review failure'
 		});
 		const failed = await terminal(accepted.body.runId);
 		expect(failed).toMatchObject({ state: 'failed', errorCode: 'INVALID_MODEL_OUTPUT' });
+		expect(failed.resultRef).toBeNull();
 		expect(requests).toBe(2);
 		expect(correction).toContain('maximum');
 		const batch = await runtime.db.analysisBatch.findFirstOrThrow({

@@ -586,7 +586,13 @@ it('rejects internal/source identifier confusion before acceptance and isolates 
 		syncRunId: sourceId,
 		idempotencyKey: randomUUID(),
 	});
-	await terminal(review.body.runId);
+	const regenerated = await terminal(review.body.runId);
+	expect(regenerated.resultRef).not.toBe(reportId);
+	expect((await get(`/reviews/${regenerated.resultRef}`)).status).toBe(200);
+	const originalReport = await runtime.db.reviewReport.findUniqueOrThrow({
+		where: { id: reportId },
+	});
+	expect((await get(`/jobs/${originalReport.reviewRunId}`)).body.resultRef).toBe(reportId);
 	expect(
 		(await runtime.db.jobRun.findUniqueOrThrow({ where: { id: newer.runId } }))
 			.currentReviewReportId,

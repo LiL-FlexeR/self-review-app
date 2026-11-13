@@ -4,4 +4,5 @@ export interface IAuthPanelProps {
 	title: string;
 	description?: ReactNode;
 	children: ReactNode;
+	footer?: ReactNode;
 }

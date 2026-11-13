@@ -8,7 +8,7 @@ export function SyncControls({ workspace }: { workspace: TProjectWorkspace }) {
 		workspace;
 	return (
 		<form
-			className="space-y-4"
+			className="@container/sync space-y-4"
 			onSubmit={(event) => {
 				event.preventDefault();
 				startSync();
@@ -19,8 +19,8 @@ export function SyncControls({ workspace }: { workspace: TProjectWorkspace }) {
 				not a historical work log. Synchronization includes model analysis and may incur
 				usage even without a self-review.
 			</p>
-			<div className="grid gap-4 sm:grid-cols-2">
-				<div className="space-y-2">
+			<div className="grid gap-4 @min-[360px]/sync:grid-cols-2">
+				<div className="min-w-0 space-y-2">
 					<Label htmlFor="start">Start date (UTC)</Label>
 					<Input
 						id="start"
@@ -30,7 +30,7 @@ export function SyncControls({ workspace }: { workspace: TProjectWorkspace }) {
 						onChange={(event) => setStart(event.target.value)}
 					/>
 				</div>
-				<div className="space-y-2">
+				<div className="min-w-0 space-y-2">
 					<Label htmlFor="end">End date, inclusive (UTC)</Label>
 					<Input
 						id="end"

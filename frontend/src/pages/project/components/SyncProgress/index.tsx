@@ -10,6 +10,7 @@ interface ISyncProgressProps {
 	message?: string;
 	onReconnect: () => void;
 	error?: string;
+	onViewResult?: () => void;
 }
 
 const CONNECTION_LABELS: Record<TJobConnectionState, string> = {
@@ -22,15 +23,35 @@ const CONNECTION_LABELS: Record<TJobConnectionState, string> = {
 	idle: 'Saved outcome loaded.',
 };
 
-export function SyncProgress({ job, connection, message, onReconnect, error }: ISyncProgressProps) {
+export function SyncProgress({
+	job,
+	connection,
+	message,
+	onReconnect,
+	error,
+	onViewResult,
+}: ISyncProgressProps) {
 	const isActive = !job || ['queued', 'running'].includes(job.state);
 	const transport = !isActive && connection !== 'inaccessible' ? 'idle' : connection;
+	const hasPendingReview =
+		job?.type === 'sync' &&
+		job.state === 'succeeded' &&
+		['queued', 'running'].includes(job.autoReview ?? '');
+	let heading = job ? jobHeading(job) : 'Loading saved job state…';
+	if (hasPendingReview) {
+		heading = 'Tasks saved; preparing self-review';
+	}
 	return (
 		<section aria-label="Job progress" className="space-y-3 border-b py-4">
 			<div className="flex flex-wrap items-start justify-between gap-3">
 				<div className="min-w-0 space-y-1">
-					<p role="status" aria-live="polite" className="text-sm font-medium">
-						{job ? jobHeading(job) : 'Loading saved job state…'}
+					<p
+						role="status"
+						aria-live="polite"
+						aria-atomic="true"
+						className="text-sm font-medium"
+					>
+						{heading}
 					</p>
 					{job && (
 						<p className="text-sm text-muted-foreground">
@@ -43,28 +64,40 @@ export function SyncProgress({ job, connection, message, onReconnect, error }: I
 						</p>
 					)}
 				</div>
+				{onViewResult && (
+					<Button variant="outline" onClick={onViewResult}>
+						{job?.type === 'review' ? 'View self-review' : 'View saved tasks'}
+					</Button>
+				)}
 				{isActive && ['exhausted', 'invalid'].includes(connection) && (
 					<Button variant="outline" onClick={onReconnect}>
 						Reconnect
 					</Button>
 				)}
 			</div>
-			<p className="text-metadata text-muted-foreground" role="status">
+			<p
+				className="text-metadata text-muted-foreground"
+				role={isActive ? 'status' : undefined}
+			>
 				{CONNECTION_LABELS[transport]}
 				{connection === 'inaccessible' && message ? ` ${message}` : ''}
 			</p>
 			{error && <Status variant="error">{error}</Status>}
 			{job?.errorCode && (
-				<Status variant="error">
+				<Status variant="error" announce={false}>
 					Saved operation outcome: {job.errorCode}. Starting again is a new operation and
 					may incur usage.
 				</Status>
 			)}
-			{job?.warnings?.map((warning) => (
-				<Status variant="warning" key={warning}>
-					{warning}
+			{!!job?.warnings?.length && (
+				<Status variant="warning" announce={false}>
+					<ul className="list-disc space-y-2 pl-4">
+						{[...new Set(job.warnings)].map((warning) => (
+							<li key={warning}>{warning}</li>
+						))}
+					</ul>
 				</Status>
-			))}
+			)}
 			{job && (
 				<details className="text-metadata text-muted-foreground">
 					<summary className="w-fit cursor-pointer">Execution details</summary>

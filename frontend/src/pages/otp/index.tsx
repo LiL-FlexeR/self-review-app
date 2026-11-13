@@ -41,7 +41,11 @@ export function OtpPage() {
 			onVerify={verify}
 			onResend={resend}
 			restartAction={
-				<Link to="/login" state={{ returnTo: location.state?.returnTo }}>
+				<Link
+					className="inline-flex min-h-11 items-center self-start rounded-button-quiet py-2 text-ui underline md:min-h-10"
+					to="/login"
+					state={{ returnTo: location.state?.returnTo }}
+				>
 					Start again with email and password
 				</Link>
 			}

@@ -1,118 +1,173 @@
-import { useQuery } from '@tanstack/react-query';
-import { ReviewView } from '@self-review/contracts';
+import { useId, useState } from 'react';
+import { Download } from 'lucide-react';
+import { SyncCommand } from '@self-review/contracts';
+import type { IReportCitation, TSavedReview } from '@app/pages/project/report-presentation';
+import type { TPeriodSelection } from '@app/pages/project/snapshot-period';
+import type { ITaskOwner } from '@app/pages/project/task-presentation';
+import { formatPeriod } from '@app/pages/project/snapshot-period';
+import { formatTaskDate } from '@app/pages/project/task-presentation';
+import { ReviewDocument } from '@app/pages/project/components/ReviewDocument';
+import { EvidencePanel } from '@app/pages/project/components/EvidencePanel';
+import { SavedIdentifier } from '@app/pages/project/components/SavedIdentifier';
+import { ReviewUsage } from '@app/pages/project/components/ReviewUsage';
 import { TraceView } from '@app/pages/project/components/TraceView';
-import { read } from '@app/lib/api';
-import { Card, CardHeader, CardTitle, CardContent } from '@app/components/ui/Card';
 import { Button } from '@app/components/ui/Button';
 import { Status } from '@app/components/ui/Status';
 
-export function ReportView({ id, userId }: { id: string; userId: string }) {
-	const report = useQuery({
-		queryKey: [userId, 'report', id],
-		queryFn: ({ signal }) => read(`/reviews/${id}`, ReviewView, signal),
-	});
-	if (report.isPending) {
-		return <Status variant="loading">Loading saved report…</Status>;
-	}
-	if (report.error) {
-		return <Status variant="error">{report.error.message}</Status>;
-	}
-	const saved = report.data!;
+interface IReportViewProps {
+	saved: TSavedReview;
+	userId: string;
+	projectName: string;
+	owner?: ITaskOwner;
+	period?: TPeriodSelection;
+	snapshotContext: string;
+	savedTaskCount?: number;
+}
+
+export function ReportView({
+	saved,
+	userId,
+	projectName,
+	owner,
+	period,
+	snapshotContext,
+	savedTaskCount,
+}: IReportViewProps) {
+	const prefix = useId();
+	const [evidence, setEvidence] = useState<{
+		citation: IReportCitation;
+		opener: HTMLButtonElement;
+	}>();
+	const [evidenceOpen, setEvidenceOpen] = useState(false);
+	const selection = SyncCommand.shape.selection.safeParse(saved.selection);
+	const savedPeriod =
+		selection.success && selection.data.mode === 'period' ? selection.data : period;
+	const subject =
+		owner?.id === saved.subjectSourceUserId ? owner.name : saved.subjectSourceUserId;
+	const isPartial =
+		saved.state === 'partial' ||
+		!saved.coverage.discoveryComplete ||
+		!saved.coverage.importComplete ||
+		!saved.coverage.analysisComplete;
 	const download = (format: 'json' | 'md') => {
 		const url = URL.createObjectURL(
 			new Blob([format === 'json' ? JSON.stringify(saved, null, 2) : saved.markdown], {
-				type: format === 'json' ? 'application/json' : 'text/markdown',
+				type:
+					format === 'json'
+						? 'application/json;charset=utf-8'
+						: 'text/markdown;charset=utf-8',
 			}),
 		);
 		const anchor = document.createElement('a');
 		anchor.href = url;
-		anchor.download = `self-review-${id}.${format}`;
+		anchor.download = `self-review-${saved.id}.${format}`;
 		anchor.click();
-		URL.revokeObjectURL(url);
+		setTimeout(() => URL.revokeObjectURL(url), 1000);
 	};
+
 	return (
-		<Card className="mx-auto w-full max-w-(--content-width-reading)">
-			<CardHeader>
-				<CardTitle>Self-review draft</CardTitle>
-			</CardHeader>
-			<CardContent className="space-y-6 break-words">
-				<p className="text-sm text-muted-foreground">
-					Subject: {saved.subjectSourceUserId} · {saved.state} · snapshot{' '}
-					{saved.sourceSyncRunId}
-				</p>
-				<p className="text-sm">
-					Period / selection: {JSON.stringify(saved.selection)} ·{' '}
-					{saved.coverage.targetTasks} subject tasks · all review units:{' '}
-					{String(saved.coverage.analysisComplete)}
-				</p>
-				{saved.draft.groups.length === 0 && <p>No supported claims for the token owner.</p>}
-				{saved.draft.groups.map((group, index) => (
-					<section key={index} className="space-y-3">
-						<h3 className="text-lg">{group.title}</h3>
-						{group.claims.map((claim, claimIndex) => (
-							<div key={claimIndex} className="space-y-2">
-								<p className="text-sm text-muted-foreground">
-									{claim.kind.replaceAll('_', ' ')}
-								</p>
-								<p>{claim.text}</p>
-								{claim.evidence.map((pair, pairIndex) => {
-									const source = saved.sources.find(
-										(item) => item.id === pair.sourceId,
-									);
-									return (
-										<details key={pairIndex} className="rounded-xl border p-3">
-											<summary className="cursor-pointer">
-												Saved source quotation
-											</summary>
-											<blockquote className="my-2 border-l pl-3">
-												{pair.quote}
-											</blockquote>
-											<p className="text-metadata">{pair.sourceId}</p>
-											<p className="text-sm">
-												Retrieved: {source?.retrievedAt}
-											</p>
-											{source?.url && (
-												<a
-													href={source.url}
-													target="_blank"
-													rel="noreferrer"
-													className="text-sm underline"
-												>
-													Open tracker source
-												</a>
-											)}
-										</details>
-									);
-								})}
-							</div>
-						))}
-					</section>
-				))}
-				<section>
-					<h3 className="mb-2">Limitations</h3>
-					<ul className="list-disc space-y-2 pl-5">
-						{saved.draft.limitations.map((item, index) => (
-							<li key={index}>{item}</li>
-						))}
-					</ul>
-				</section>
-				<p>{saved.draft.explanation}</p>
-				<TraceView runId={saved.reviewRunId} userId={userId} />
-				<details>
-					<summary>Model usage (scripted/unknown is not an actual zero cost)</summary>
-					<pre className="overflow-auto text-metadata">
-						{JSON.stringify(saved.usage, null, 2)}
-					</pre>
-				</details>
-				<div className="flex flex-wrap gap-2">
-					<Button variant="outline" onClick={() => download('md')}>
+		<article className="min-w-0 space-y-8" aria-labelledby={`${prefix}-title`}>
+			{isPartial && (
+				<Status variant="warning">
+					Partial source coverage. Discovery:{' '}
+					{saved.coverage.discoveryComplete ? 'complete' : 'incomplete'}; import:{' '}
+					{saved.coverage.importComplete ? 'complete' : 'incomplete'}; review analysis:{' '}
+					{saved.coverage.analysisComplete ? 'complete' : 'incomplete'}.
+				</Status>
+			)}
+			<header className="space-y-4 border-b pb-6">
+				<div className="space-y-2">
+					<p className="text-metadata text-muted-foreground">
+						Saved draft · {snapshotContext}
+					</p>
+					<h2 id={`${prefix}-title`} className="text-page-small md:text-page">
+						Self-review
+					</h2>
+					<p className="text-report wrap-anywhere">{projectName}</p>
+				</div>
+				<dl className="grid gap-x-6 gap-y-4 text-metadata sm:grid-cols-2">
+					<div>
+						<dt className="text-muted-foreground">Review subject</dt>
+						<dd className="mt-1 wrap-anywhere">{subject}</dd>
+					</div>
+					<div>
+						<dt className="text-muted-foreground">Creation-date period</dt>
+						<dd className="mt-1">
+							{savedPeriod
+								? formatPeriod(savedPeriod)
+								: 'Saved UTC period unavailable'}
+						</dd>
+					</div>
+					<div>
+						<dt className="text-muted-foreground">Generated</dt>
+						<dd className="mt-1">{formatTaskDate(saved.createdAt, true)}</dd>
+					</div>
+					<div>
+						<dt className="text-muted-foreground">Subject coverage</dt>
+						<dd className="mt-1">
+							{saved.coverage.targetTasks} qualifying tasks ·{' '}
+							{saved.coverage.analysisComplete
+								? 'Review analysis complete'
+								: 'Review analysis incomplete'}
+						</dd>
+					</div>
+				</dl>
+				{selection.success && selection.data.mode === 'tasks' && (
+					<p className="text-metadata text-muted-foreground">
+						Selected-task refresh · inherited creation-date period. Evidence may retain
+						earlier retrieval dates.
+					</p>
+				)}
+				<div
+					className="flex flex-wrap gap-2"
+					role="group"
+					aria-label="Download saved report"
+				>
+					<Button variant="outline" size="sm" onClick={() => download('md')}>
+						<Download aria-hidden="true" />
 						Download Markdown
 					</Button>
-					<Button variant="outline" onClick={() => download('json')}>
+					<Button variant="outline" size="sm" onClick={() => download('json')}>
+						<Download aria-hidden="true" />
 						Download JSON
 					</Button>
 				</div>
-			</CardContent>
-		</Card>
+			</header>
+			<ReviewDocument
+				saved={saved}
+				savedTaskCount={savedTaskCount}
+				onEvidence={(citation, opener) => {
+					setEvidence({ citation, opener });
+					setEvidenceOpen(true);
+				}}
+			/>
+			<footer>
+				<details className="border-t py-4 text-metadata">
+					<summary className="cursor-pointer font-medium">Report provenance</summary>
+					<p className="mt-4 text-muted-foreground">
+						This draft uses saved evidence from the source snapshot below. Tracker
+						assignment alone does not establish individual contribution.
+					</p>
+					<dl className="mt-4 space-y-3">
+						<SavedIdentifier label="Source snapshot" value={saved.sourceSyncRunId} />
+						<SavedIdentifier label="Report" value={saved.id} />
+						<SavedIdentifier label="Review execution" value={saved.reviewRunId} />
+						<SavedIdentifier
+							label="Saved review subject"
+							value={saved.subjectSourceUserId}
+						/>
+					</dl>
+				</details>
+				<ReviewUsage usage={saved.usage} />
+				<TraceView runId={saved.reviewRunId} userId={userId} />
+			</footer>
+			<EvidencePanel
+				saved={saved}
+				citation={evidence?.citation}
+				open={evidenceOpen}
+				opener={evidence?.opener ?? null}
+				onClose={() => setEvidenceOpen(false)}
+			/>
+		</article>
 	);
 }

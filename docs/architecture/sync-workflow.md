@@ -79,6 +79,8 @@ On connection, always send the current Postgres state. For the MVP, the API read
 
 Payload: {runId,type,state,stage,version,counts,discoveryComplete,importComplete,analysisComplete,resultRef,errorCode?,warningsCount,autoReview?,reviewRunId?}. No raw tasks, OTP, or secrets. SSE id = runId/version. Reconnection sends current state again; the client deduplicates version, while GET /api/jobs/:id remains a verification path. Full replay of every intermediate event and exactly-once delivery are not provided.
 
+For a succeeded or partial review, `resultRef` identifies the report produced by that exact review execution, including after later regenerations. Its `sourceSyncRunId` is provenance rather than a report ID. A review without a published report has a null result reference. Sync results retain their current report pointer when available, otherwise their snapshot/run ID; `currentReviewReportId` explicitly exposes the selected snapshot's report pointer.
+
 After a terminal sync event, the client refreshes the project page. If autoReview was requested and reviewRunId exists, subscribe to the child's SSE and show "Tasks saved; preparing review" rather than declaring the whole operation finished. Otherwise, close the stream and show the outcome/skipped reason. A terminal review event closes its stream. If the terminal event was missed, a new SSE/GET still shows the result. Closing the tab or losing the network does not cancel the job. Database persistence, not receipt of a notification, determines whether data is saved.
 
 The frontend query/cache and authentication lifecycle is defined in [frontend data flow](overview.md#frontend-data-flow); SSE refreshes saved data through that layer rather than repeating job-start commands.

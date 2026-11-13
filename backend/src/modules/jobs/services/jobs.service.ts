@@ -109,7 +109,7 @@ export class JobsService {
 			discoveryComplete: coverage.discoveryComplete ?? false,
 			importComplete: run.importComplete,
 			analysisComplete: run.analysisComplete,
-			resultRef: this.getResultReference(run),
+			resultRef: await this.getResultReference(run),
 			currentReviewReportId: run.currentReviewReportId,
 			errorCode: error.success ? error.data.code : null,
 			warningsCount: (coverage.warnings?.length ?? 0) + (run.state === 'partial' ? 1 : 0),
@@ -374,14 +374,18 @@ export class JobsService {
 		};
 	}
 
-	private getResultReference(run: JobRun): string | null {
-		if (run.currentReviewReportId !== null) {
-			return run.currentReviewReportId;
+	private async getResultReference(run: JobRun): Promise<string | null> {
+		if (run.state !== 'succeeded' && run.state !== 'partial') {
+			return null;
 		}
-		if (run.state === 'succeeded' || run.state === 'partial') {
-			return run.sourceSyncRunId ?? run.id;
+		if (run.type === 'review') {
+			// The source snapshot is provenance; navigation needs this execution's report.
+			const report = await this.database.client.reviewReport.findUnique({
+				where: { reviewRunId: run.id },
+				select: { id: true },
+			});
+			return report?.id ?? null;
 		}
-
-		return null;
+		return run.currentReviewReportId ?? run.id;
 	}
 }

@@ -56,6 +56,10 @@ export function useProjectWorkspace(id: string, userId: string | undefined) {
 		queryFn: ({ signal }) => read(`/projects/${id}`, ProjectDetail, signal),
 	});
 	const active = project.data?.runs.find((run) => ['queued', 'running'].includes(run.state));
+	// Retain an observed automatic child after it leaves the active-run preview.
+	if (active && active.runId !== acceptedId) {
+		setAcceptedId(active.runId);
+	}
 	const runId = active?.runId ?? acceptedId;
 	const job = useQuery({
 		queryKey: [userId, 'job', runId],
@@ -63,6 +67,15 @@ export function useProjectWorkspace(id: string, userId: string | undefined) {
 		queryFn: ({ signal }) => read(`/jobs/${runId}`, JobView, signal),
 	});
 	const stream = useJobStream(runId, userId, id);
+	const resultReportId = job.data?.type === 'review' ? job.data.resultRef : null;
+	const completedReport = useQuery({
+		queryKey: [userId, 'report', resultReportId],
+		enabled:
+			hasIdentity &&
+			!!resultReportId &&
+			['succeeded', 'partial'].includes(job.data?.state ?? ''),
+		queryFn: ({ signal }) => read(`/reviews/${resultReportId}`, ReviewView, signal),
+	});
 	const history = useInfiniteQuery({
 		queryKey: [...key, 'history'],
 		enabled: hasIdentity,
@@ -183,6 +196,7 @@ export function useProjectWorkspace(id: string, userId: string | undefined) {
 		runId,
 		job,
 		stream,
+		completedReport,
 		history,
 		syncs,
 		snapshotId,

@@ -38,6 +38,7 @@ export function RefreshTasksDialog({ workspace }: { workspace: TProjectWorkspace
 	return (
 		<Dialog open={refreshOpen} onOpenChange={setRefreshOpen}>
 			<DialogContent
+				aria-busy={mutation.isPending}
 				onOpenAutoFocus={(event) => {
 					opener.current =
 						document.activeElement instanceof HTMLElement
@@ -149,6 +150,7 @@ export function RefreshTasksDialog({ workspace }: { workspace: TProjectWorkspace
 					</Button>
 					<Button
 						disabled={!canConfirm}
+						aria-busy={mutation.isPending}
 						onClick={() => {
 							if (!canConfirm) {
 								return;

@@ -8,12 +8,19 @@ import { ActivityPanel } from '@app/pages/project/components/ActivityPanel';
 export function WorkspaceTabs({ workspace }: { workspace: TProjectWorkspace }) {
 	return (
 		<Tabs value={workspace.tab} onValueChange={workspace.setTab}>
-			<TabsList aria-label="Project workspace">
-				<TabsTrigger value="overview">Overview</TabsTrigger>
-				<TabsTrigger value="tasks">Tasks</TabsTrigger>
-				<TabsTrigger value="review">Self-review</TabsTrigger>
-				<TabsTrigger value="activity">Activity</TabsTrigger>
-			</TabsList>
+			<div
+				role="region"
+				aria-label="Project sections"
+				tabIndex={0}
+				className="-m-1.5 min-w-0 overflow-x-auto overscroll-x-contain p-1.5"
+			>
+				<TabsList aria-label="Project workspace" className="w-max min-w-full">
+					<TabsTrigger value="overview">Overview</TabsTrigger>
+					<TabsTrigger value="tasks">Tasks</TabsTrigger>
+					<TabsTrigger value="review">Self-review</TabsTrigger>
+					<TabsTrigger value="activity">Activity</TabsTrigger>
+				</TabsList>
+			</div>
 			<TabsContent value="overview">
 				<Overview workspace={workspace} />
 			</TabsContent>

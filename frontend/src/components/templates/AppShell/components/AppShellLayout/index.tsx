@@ -46,7 +46,7 @@ export function AppShellLayout({
 				<div
 					data-content-width={contentWidth}
 					className={cn(
-						'mx-auto flex w-full min-w-0 flex-col gap-6',
+						'@container/workspace mx-auto flex w-full min-w-0 flex-col gap-6',
 						CONTENT_WIDTHS[contentWidth],
 					)}
 				>

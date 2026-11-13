@@ -52,7 +52,7 @@ export function Overview({ workspace }: { workspace: TProjectWorkspace }) {
 			'Choose another snapshot explicitly, or return to its source context. No other snapshot has been substituted.';
 	}
 	return (
-		<div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_280px]">
+		<div className="grid min-w-0 gap-8 @min-[880px]/workspace:grid-cols-[minmax(0,1fr)_280px]">
 			<div className="min-w-0 space-y-8">
 				<section className="space-y-4" aria-labelledby="next-action-title">
 					<h2 id="next-action-title" className="text-section">
@@ -109,7 +109,7 @@ export function Overview({ workspace }: { workspace: TProjectWorkspace }) {
 				</section>
 			</div>
 			<aside
-				className="min-w-0 space-y-4 border-t pt-6 lg:border-t-0 lg:border-l lg:pt-0 lg:pl-6"
+				className="min-w-0 space-y-4 border-t pt-6 @min-[880px]/workspace:border-t-0 @min-[880px]/workspace:border-l @min-[880px]/workspace:pt-0 @min-[880px]/workspace:pl-6"
 				aria-labelledby="evidence-facts-title"
 			>
 				<h2 id="evidence-facts-title" className="text-component">

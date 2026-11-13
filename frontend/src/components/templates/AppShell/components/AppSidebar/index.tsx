@@ -24,11 +24,11 @@ export function AppSidebar({ user, busy, onLogout }: IAppSidebarProps) {
 
 	return (
 		<Sidebar>
-			<SidebarHeader className="flex-row items-center gap-2 px-4 py-6">
+			<SidebarHeader className="shrink-0 flex-row items-center gap-2 px-4 py-6">
 				<ClipboardCheck className="size-5" aria-hidden="true" />
 				<span className="font-medium">Self Review</span>
 			</SidebarHeader>
-			<SidebarContent className="px-4">
+			<SidebarContent className="min-h-fit flex-none px-4">
 				<nav aria-label="Main navigation">
 					<SidebarMenu className="gap-2">
 						{NAVIGATION.map(({ to, label, icon: Icon }) => (
@@ -52,7 +52,7 @@ export function AppSidebar({ user, busy, onLogout }: IAppSidebarProps) {
 					</SidebarMenu>
 				</nav>
 			</SidebarContent>
-			<SidebarFooter className="gap-2 border-t p-4">
+			<SidebarFooter className="mt-auto shrink-0 gap-2 border-t p-4">
 				<div className="flex min-w-0 items-start gap-2">
 					<UserRound className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
 					<div className="min-w-0 space-y-1">

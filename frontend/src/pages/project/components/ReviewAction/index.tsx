@@ -1,3 +1,4 @@
+import { useId } from 'react';
 import type { TProjectWorkspace } from '@app/pages/project/use-project-workspace';
 import { Button } from '@app/components/ui/Button';
 
@@ -9,6 +10,7 @@ export function ReviewAction({
 	acknowledge?: boolean;
 }) {
 	const { snapshot, snapshotId, busy, allowPartial, setAllowPartial, mutation } = workspace;
+	const helpId = useId();
 	if (!snapshot || !['succeeded', 'partial'].includes(snapshot.state)) {
 		return null;
 	}
@@ -28,6 +30,7 @@ export function ReviewAction({
 			<Button
 				variant={snapshot.currentReviewReportId ? 'outline' : 'default'}
 				disabled={busy || (snapshot.state === 'partial' && (!acknowledge || !allowPartial))}
+				aria-describedby={helpId}
 				onClick={() =>
 					mutation.mutate({
 						action: 'reviews',
@@ -37,7 +40,7 @@ export function ReviewAction({
 			>
 				{snapshot.currentReviewReportId ? 'Regenerate self-review' : 'Create self-review'}
 			</Button>
-			<p className="text-sm text-muted-foreground">
+			<p id={helpId} className="text-sm text-muted-foreground">
 				Generation creates a new report and may incur model usage. The previous valid report
 				stays available if generation fails.
 			</p>

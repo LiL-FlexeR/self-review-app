@@ -32,7 +32,7 @@ export function TaskTable({ tasks, selected, owner, onSelect, onOpen }: ITaskTab
 	return (
 		<div
 			id={TASK_TABLE_ID}
-			className="relative max-w-full overflow-x-auto rounded-md border-y"
+			className="relative min-w-0 max-w-full overflow-x-auto overscroll-x-contain rounded-md border-y"
 			tabIndex={0}
 			role="region"
 			aria-label="Tasks in this snapshot"
@@ -82,7 +82,7 @@ export function TaskTable({ tasks, selected, owner, onSelect, onOpen }: ITaskTab
 									aria-label={`Open ${task.identifier}: ${task.title}`}
 									onClick={() => onOpen(task.id)}
 								>
-									<span className="block font-mono text-identifier text-muted-foreground">
+									<span className="block font-mono text-identifier text-muted-foreground wrap-anywhere">
 										{task.identifier}
 									</span>
 									<span className="block font-medium wrap-anywhere">

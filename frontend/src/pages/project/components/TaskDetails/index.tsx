@@ -1,12 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { TaskDetail } from '@self-review/contracts';
 import type { ITaskOwner } from '@app/pages/project/task-presentation';
-import { read } from '@app/lib/api';
-import { ClientError } from '@app/auth/coordinator';
+import { read, canRetainSavedRead } from '@app/lib/api';
 import { TaskDetailView } from '@app/pages/project/components/TaskDetailView';
 import { SheetHeader, SheetTitle, SheetDescription } from '@app/components/ui/Sheet';
-import { Button } from '@app/components/ui/Button';
-import { Status } from '@app/components/ui/Status';
+import { ErrorState } from '@app/components/templates/ErrorState';
+import { LoadingState } from '@app/components/templates/LoadingState';
 
 export function TaskDetails({
 	id,
@@ -21,18 +20,16 @@ export function TaskDetails({
 		queryKey: [userId, 'task', id],
 		queryFn: ({ signal }) => read(`/tasks/${id}`, TaskDetail, signal),
 	});
-	const canRetain =
-		!task.error ||
-		(task.error instanceof ClientError &&
-			task.error.retryable &&
-			![401, 403, 404].includes(task.error.status));
+	const canRetain = canRetainSavedRead(task.error);
 	if (task.data && canRetain) {
 		return (
 			<TaskDetailView
 				key={task.data.id}
 				task={task.data}
 				owner={owner}
-				readError={task.error?.message}
+				readError={task.error ?? undefined}
+				onRetry={() => void task.refetch()}
+				isRetrying={task.isFetching}
 			/>
 		);
 	}
@@ -46,23 +43,18 @@ export function TaskDetails({
 			</SheetHeader>
 			<div className="space-y-4 overflow-y-auto p-4 md:p-6">
 				{task.isPending && (
-					<p role="status" className="text-sm text-muted-foreground">
+					<LoadingState reserveSpace>
 						Loading description, saved comments and evidence…
-					</p>
+					</LoadingState>
 				)}
 				{task.error && (
-					<>
-						<Status variant="error">{task.error.message}</Status>
-						<Button
-							variant="outline"
-							disabled={task.isFetching}
-							onClick={() => {
-								void task.refetch();
-							}}
-						>
-							Retry saved task
-						</Button>
-					</>
+					<ErrorState
+						error={task.error}
+						title="Saved task unavailable"
+						onRetry={() => void task.refetch()}
+						retryLabel="Retry saved task"
+						isRetrying={task.isFetching}
+					/>
 				)}
 			</div>
 		</>

@@ -5,25 +5,24 @@ import { formatTaskDate } from '@app/pages/project/task-presentation';
 import { TaskEvidenceView } from '@app/pages/project/components/TaskEvidenceView';
 import { TaskFreshness } from '@app/pages/project/components/TaskFreshness';
 import { TaskAssignees } from '@app/pages/project/components/TaskAssignees';
+import { CLAIM_LABELS } from '@app/pages/project/report-presentation';
 import { SheetHeader, SheetTitle, SheetDescription } from '@app/components/ui/Sheet';
 import { Button } from '@app/components/ui/Button';
 import { Status } from '@app/components/ui/Status';
+import { ErrorState } from '@app/components/templates/ErrorState';
 
 interface ITaskDetailViewProps {
 	task: TSavedTask;
 	owner?: ITaskOwner;
-	readError?: string;
+	readError?: Error;
+	onRetry?: () => void;
+	isRetrying?: boolean;
 }
 interface IEvidenceSelection {
 	sourceId: string;
 	quote?: string;
 	controlId: string;
 }
-const CLAIM_LABELS = {
-	task_description: 'Task description',
-	reported_result: 'Reported result',
-	reported_measurement: 'Measurement from a source',
-};
 const EMPTY_DESCRIPTION: Record<string, string> = {
 	available: 'No description in the saved source.',
 	pending: 'Task details were not read before this snapshot was saved.',
@@ -31,7 +30,13 @@ const EMPTY_DESCRIPTION: Record<string, string> = {
 	truncated: 'No description text was retained in this limited source.',
 };
 
-export function TaskDetailView({ task, owner, readError }: ITaskDetailViewProps) {
+export function TaskDetailView({
+	task,
+	owner,
+	readError,
+	onRetry,
+	isRetrying,
+}: ITaskDetailViewProps) {
 	const [evidence, setEvidence] = useState<IEvidenceSelection>();
 	const prefix = useId();
 	const evidenceHeading = useRef<HTMLHeadingElement>(null);
@@ -58,6 +63,8 @@ export function TaskDetailView({ task, owner, readError }: ITaskDetailViewProps)
 			<TaskEvidenceView
 				source={source}
 				quote={evidence.quote}
+				snapshotId={task.syncRunId}
+				referenceSourceId={evidence.sourceId}
 				headingRef={evidenceHeading}
 				onBack={() => setEvidence(undefined)}
 			/>
@@ -66,7 +73,7 @@ export function TaskDetailView({ task, owner, readError }: ITaskDetailViewProps)
 	const hasLimitedComments = task.commentsTruncated || task.commentReadState === 'truncated';
 	return (
 		<>
-			<SheetHeader className="max-h-[40dvh] shrink-0 overflow-y-auto border-b p-4 pr-14 md:p-6 md:pr-14">
+			<SheetHeader className="max-h-[40dvh] shrink-0 overflow-y-auto overscroll-contain border-b p-4 pr-14 md:p-6 md:pr-14">
 				<p className="font-mono text-identifier text-muted-foreground">{task.identifier}</p>
 				<SheetTitle className="text-section wrap-anywhere">{task.title}</SheetTitle>
 				<SheetDescription>
@@ -81,11 +88,17 @@ export function TaskDetailView({ task, owner, readError }: ITaskDetailViewProps)
 					</Button>
 				)}
 			</SheetHeader>
-			<div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4 md:p-6">
+			<div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain p-4 md:p-6">
 				{readError && (
-					<Status variant="error">
-						{readError} Showing the previously loaded saved task.
-					</Status>
+					<ErrorState
+						error={readError}
+						title="Saved task could not be refreshed"
+						onRetry={onRetry}
+						retryLabel="Retry saved task"
+						isRetrying={isRetrying}
+					>
+						Showing the previously loaded saved task.
+					</ErrorState>
 				)}
 				<div className="flex flex-wrap items-center gap-2">
 					<TaskFreshness status={task.refreshStatus} />

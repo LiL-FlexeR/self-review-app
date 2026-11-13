@@ -12,7 +12,7 @@ export function ProjectHeader({ workspace }: { workspace: TProjectWorkspace }) {
 	}
 	return (
 		<section aria-label="Project context" className="space-y-4 border-b pb-6">
-			<div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_minmax(280px,420px)]">
+			<div className="grid min-w-0 gap-6 @min-[880px]/workspace:grid-cols-[minmax(0,1fr)_minmax(280px,420px)]">
 				<div className="min-w-0 space-y-3">
 					<p className="text-sm text-muted-foreground wrap-anywhere">
 						{saved.connection.provider} · {saved.resourceType} ·{' '}

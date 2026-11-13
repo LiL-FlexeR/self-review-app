@@ -1,10 +1,13 @@
-import { ArrowLeft, ArrowRight, ListChecks } from 'lucide-react';
+import { ArrowLeft, ArrowRight } from 'lucide-react';
 import type { TProjectWorkspace } from '@app/pages/project/use-project-workspace';
+import { canRetainSavedRead } from '@app/lib/api';
 import { focusTaskWorkspace } from '@app/pages/project/task-presentation';
 import { TaskTable } from '@app/pages/project/components/TaskTable';
 import { SelectionToolbar } from '@app/pages/project/components/SelectionToolbar';
 import { Button } from '@app/components/ui/Button';
-import { Status } from '@app/components/ui/Status';
+import { EmptyState } from '@app/components/templates/EmptyState';
+import { ErrorState } from '@app/components/templates/ErrorState';
+import { LoadingState } from '@app/components/templates/LoadingState';
 
 export function TasksPanel({ workspace }: { workspace: TProjectWorkspace }) {
 	const {
@@ -20,22 +23,37 @@ export function TasksPanel({ workspace }: { workspace: TProjectWorkspace }) {
 		setRefreshOpen,
 		project,
 	} = workspace;
-	if (!snapshot) {
+	if (!snapshot && workspace.snapshotId && !workspace.selectedSnapshot.error) {
 		return (
-			<div className="space-y-3 py-6">
-				<h2 className="text-section">No snapshot selected</h2>
-				<p className="text-sm text-muted-foreground">
-					Choose a saved snapshot, or synchronize a period to collect task evidence.
-				</p>
-				<Button variant="outline" onClick={() => workspace.setTab('overview')}>
-					Go to Overview
-				</Button>
-			</div>
+			<LoadingState reserveSpace>Loading the selected snapshot’s saved tasks…</LoadingState>
 		);
 	}
-	const items = tasks.data?.items ?? [];
+	if (!snapshot && workspace.snapshotId) {
+		return (
+			<EmptyState title="Selected snapshot unavailable">
+				Choose another saved snapshot explicitly, or use the read recovery in the project
+				context above.
+			</EmptyState>
+		);
+	}
+	if (!snapshot) {
+		return (
+			<EmptyState
+				title="No snapshot selected"
+				action={
+					<Button variant="outline" onClick={() => workspace.setTab('overview')}>
+						Go to Overview
+					</Button>
+				}
+			>
+				Choose a saved snapshot, or synchronize a period to collect task evidence.
+			</EmptyState>
+		);
+	}
+	const savedTasks = canRetainSavedRead(tasks.error) ? tasks.data : undefined;
+	const items = savedTasks?.items ?? [];
 	const pageStart = Number(cursor) + 1;
-	const nextCursor = tasks.data?.nextCursor;
+	const nextCursor = savedTasks?.nextCursor;
 	const connection = project.data?.connection;
 	const owner = connection
 		? { id: connection.sourceUserId, name: connection.sourceUserName }
@@ -71,34 +89,27 @@ export function TasksPanel({ workspace }: { workspace: TProjectWorkspace }) {
 				}}
 			/>
 			{tasks.error && (
-				<div className="space-y-3">
-					<Status variant="error">{tasks.error.message}</Status>
-					<Button
-						variant="outline"
-						disabled={tasks.isFetching}
-						onClick={() => {
-							void tasks.refetch();
-						}}
-					>
-						Retry saved tasks
-					</Button>
-				</div>
+				<ErrorState
+					error={tasks.error}
+					title="Saved tasks unavailable"
+					onRetry={() => void tasks.refetch()}
+					retryLabel="Retry saved tasks"
+					isRetrying={tasks.isFetching}
+				>
+					{savedTasks
+						? 'Previously loaded tasks on this page remain available.'
+						: 'You can inspect other saved snapshots from the selector.'}
+				</ErrorState>
 			)}
-			{tasks.isPending && (
-				<p role="status" className="py-8 text-sm text-muted-foreground">
-					Loading saved tasks…
-				</p>
+			{tasks.isPending && !tasks.error && (
+				<LoadingState reserveSpace>Loading saved tasks…</LoadingState>
 			)}
-			{tasks.data && items.length === 0 && (
-				<div className="space-y-3 border-y py-10">
-					<ListChecks className="size-6 text-muted-foreground" aria-hidden="true" />
-					<h3 className="text-component">No tasks on this page</h3>
-					<p className="max-w-prose text-sm text-muted-foreground">
-						{cursor === '0'
-							? 'No tasks were saved for this creation-date period. Check the selected period and source coverage in Overview.'
-							: 'There are no saved tasks at this position. Return to the previous page.'}
-					</p>
-				</div>
+			{savedTasks && items.length === 0 && !tasks.error && (
+				<EmptyState title="No tasks on this page">
+					{cursor === '0'
+						? 'No tasks were saved for this creation-date period. Check the selected period and source coverage in Overview.'
+						: 'There are no saved tasks at this position. Return to the previous page.'}
+				</EmptyState>
 			)}
 			{items.length > 0 && (
 				<>
@@ -121,7 +132,7 @@ export function TasksPanel({ workspace }: { workspace: TProjectWorkspace }) {
 					</p>
 				</>
 			)}
-			{tasks.data && (
+			{savedTasks && (
 				<div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">
 					<p className="text-metadata text-muted-foreground" role="status">
 						{items.length

@@ -5,12 +5,17 @@ import { formatTaskDate } from '@app/pages/project/task-presentation';
 import { Button } from '@app/components/ui/Button';
 import { SheetHeader, SheetTitle, SheetDescription } from '@app/components/ui/Sheet';
 import { Status } from '@app/components/ui/Status';
+import { SavedIdentifier } from '@app/pages/project/components/SavedIdentifier';
 
 interface ITaskEvidenceViewProps {
 	source?: TSource;
 	quote?: string;
 	onBack: () => void;
 	headingRef: Ref<HTMLHeadingElement>;
+	backLabel?: string;
+	title?: string;
+	snapshotId?: string;
+	referenceSourceId?: string;
 }
 const SOURCE_LABELS = {
 	metadata: 'Task metadata',
@@ -18,23 +23,34 @@ const SOURCE_LABELS = {
 	comment: 'Saved comment',
 };
 
-export function TaskEvidenceView({ source, quote, onBack, headingRef }: ITaskEvidenceViewProps) {
+export function TaskEvidenceView({
+	source,
+	quote,
+	onBack,
+	headingRef,
+	backLabel = 'Back to task',
+	title = 'Saved evidence',
+	snapshotId,
+	referenceSourceId,
+}: ITaskEvidenceViewProps) {
+	const sourceId = source?.id ?? referenceSourceId;
+
 	return (
 		<>
-			<SheetHeader className="shrink-0 border-b p-4 pr-14 md:p-6 md:pr-14">
+			<SheetHeader className="max-h-[40dvh] shrink-0 overflow-y-auto overscroll-contain border-b p-4 pr-14 md:p-6 md:pr-14">
 				<Button variant="ghost" size="sm" className="-ml-3 mb-2 w-fit" onClick={onBack}>
 					<ArrowLeft aria-hidden="true" />
-					Back to task
+					{backLabel}
 				</Button>
 				<SheetTitle ref={headingRef} tabIndex={-1} className="text-section">
-					Saved evidence
+					{title}
 				</SheetTitle>
 				<SheetDescription>
 					{source ? SOURCE_LABELS[source.kind] : 'Unavailable source'} · read from this
 					saved snapshot
 				</SheetDescription>
 			</SheetHeader>
-			<div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4 md:p-6">
+			<div className="min-h-0 flex-1 space-y-6 overflow-y-auto overscroll-contain p-4 md:p-6">
 				{quote && (
 					<section className="space-y-3">
 						<h3 className="text-component">Quoted evidence</h3>
@@ -45,8 +61,8 @@ export function TaskEvidenceView({ source, quote, onBack, headingRef }: ITaskEvi
 				)}
 				{!source && (
 					<Status variant="error">
-						The referenced source is unavailable in this task’s saved source registry.
-						The quotation remains visible; no external content was fetched.
+						The referenced source is unavailable in the saved source registry. The
+						quotation remains visible; no external content was fetched.
 					</Status>
 				)}
 				{source && (
@@ -95,11 +111,20 @@ export function TaskEvidenceView({ source, quote, onBack, headingRef }: ITaskEvi
 								available.
 							</p>
 						)}
-						<details className="text-metadata text-muted-foreground">
-							<summary className="w-fit cursor-pointer">Source identifier</summary>
-							<p className="mt-2 font-mono wrap-anywhere">{source.id}</p>
-						</details>
 					</>
+				)}
+				{(snapshotId || sourceId) && (
+					<details className="border-t pt-4 text-metadata">
+						<summary className="w-fit cursor-pointer">Saved provenance</summary>
+						<dl className="mt-3 space-y-3">
+							{snapshotId && (
+								<SavedIdentifier label="Source snapshot" value={snapshotId} />
+							)}
+							{sourceId && (
+								<SavedIdentifier label="Source identifier" value={sourceId} />
+							)}
+						</dl>
+					</details>
 				)}
 			</div>
 		</>
