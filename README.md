@@ -29,6 +29,8 @@ Docker Engine/Desktop with Compose is required. Host development uses Node 24 LT
 Use a browser with Web Locks on localhost/HTTPS. Tokens stay in HttpOnly cookies; CSRF and query state remain in memory.
 
 ```bash
+git clone https://github.com/LiL-FlexeR/self-review-app.git
+cd self-review-app
 npm run setup
 docker compose up -d --build --wait
 ```
@@ -116,9 +118,11 @@ npm run build
 
 Tests cover authentication, storage constraints, real BullMQ/Postgres/Redis execution, the 6/137-task cases, source validation, automatic/manual review, report rollback, selective refresh, ownership, enqueue-gap recovery, SSE disconnect/API restart, and client recovery. Integration substitutes SMTP and the external model/source boundaries. Provider transport/HTTP tests cover paginated catalogs/imports, exact UTC boundaries, scoped selected refresh, identity replacement, encrypted credentials, byte/time budgets and ownership. Linear cases include GraphQL HTTP 200 errors; ClickUp includes empty hierarchy traversal, archived/closed/subtask/TIML options and multiple assignees; Jira includes enhanced JQL continuation, ADF, safe-origin discovery and cloudId rotation restrictions. Shared evidence checks reject unfinished or unknown status categories as support for result/measurement claims. SDK tests use a synthetic HTTP transport and do not prove live OpenAI access. See [actual stage verification](ROADMAP.md).
 
+[GitHub Actions](.github/workflows/verify.yaml) runs the same check, unit, integration and build sequence on pushes to `production`, pull requests and manual dispatch. It uses pinned Node/npm/actions and isolated Postgres/Redis; no OpenAI or tracker credentials are required. Local results and the hosted CI result are recorded independently in ROADMAP.
+
 Manual S01 check: signup → Mailpit → OTP → protected shell → open a second tab → sign out → confirm both tabs clear the account → sign in with password and a fresh OTP. Reload `/connections` or `/projects`; missing `/api` and asset paths retain 404 responses. Authentication expiry and competing refreshes are covered with a controlled test clock and real storage.
 
-## S02 walkthrough
+## Evaluator walkthrough
 
 1. Sign up, read the OTP in Mailpit, and enter it. Add the demo source on Connections.
 2. Open Projects → Demo platform. Keep **2026-10-01–2026-10-31 (UTC)** and synchronize. The automatic-review checkbox starts unchecked.
@@ -126,7 +130,8 @@ Manual S01 check: signup → Mailpit → OTP → protected shell → open a seco
 4. Choose **Create self-review**, or request automatic review on a new sync. The subject is **Anna / demo-anna**, with **5 qualifying tasks**. Export the saved JSON and Markdown.
 5. Select DEMO-101 and **Refresh selected**. Confirm the base snapshot and optional review. A new snapshot contains one refreshed task and copies retaining original timestamps. Historical reports remain accessible through snapshot history.
 6. Open **137-task pagination example**, synchronize, and browse every task page. All 137 tasks and 14 analysis leaves are processed; review reduction includes the last batch.
-7. Close/reopen the project URL or restart the API. Saved data remains. Reconnect only reads persisted progress and does not start model work.
+7. Close/reopen the project URL during work. Restart only the API with `docker compose restart api`, then reopen the saved project URL. Saved data remains. Reconnect only reads persisted progress and does not start model work.
+8. Open the same project in a second tab. Sign out in the first tab: both tabs must clear the account. Register/sign in as a second user with a new Mailpit OTP; the first user's connections, tasks and reports must not appear. Follow the complete [S06 manual scenario](docs/stages/S06-submission.md#evaluators-manual-scenario) for renewal, errors, keyboard and narrow-screen checks. Automated expiry/concurrency results and actual manual observations are recorded separately in ROADMAP.
 
 Generation uses the configured model and can incur new usage. Opening/exporting never generates. Partial-source review requires explicit acknowledgment; failed regeneration preserves the old valid report.
 
@@ -136,7 +141,9 @@ For Docker with Vite, apply these environment changes with `APP_PORT=3001 APP_OR
 
 ## Example result
 
-[Executed offline JSON](docs/examples/offline-review.json), [Markdown](docs/examples/offline-review.md), and [safe trace](docs/examples/offline-trace.json) come from the integration workflow with synthetic data and scripted model output. Their UUIDs identify that isolated test execution, not records in a user's database. Usage is explicitly unknown/scripted; this is not a live-model result.
+[Synthetic input](docs/examples/offline-input.json), [executed offline JSON](docs/examples/offline-review.json), [Markdown](docs/examples/offline-review.md), and [safe trace](docs/examples/offline-trace.json) come from the integration workflow with synthetic data and scripted model output. Their UUIDs identify that isolated test execution, not records in a user's database. Usage is explicitly unknown/scripted; this is not a live-model result. The [example guide](docs/examples/README.md) explains selection, expected invariants, regeneration, and how to assess real-model output.
+
+[Executed OpenAI demo JSON](docs/examples/demo-review.json), [Markdown](docs/examples/demo-review.md), and [safe trace](docs/examples/demo-trace.json) use the same synthetic source with the real pinned model. The model chose no comments in this run; its output and known usage differ from the programmed offline example. All nine evidence pairs were checked against that saved snapshot. This verifies real model execution on synthetic material, not real delivery or business impact.
 
 [Fixture inputs and acceptance invariants](docs/architecture/agent-workflow.md#example-run).
 
@@ -144,7 +151,7 @@ For Docker with Vite, apply these environment changes with `APP_PORT=3001 APP_OR
 
 **Not in production today.** Potential users include product teams with regular reviews, platform teams collecting technical outcomes, and agencies preparing individual project reports.
 
-The planned complete application stores snapshots, not the tracker's full event history. "All tasks" means all accessible tasks in the selected project and period: there is no task-count cap, and pagination runs to completion. Import, analysis, and self-review operate in batches; incomplete coverage is shown explicitly. A correct quotation does not guarantee a correct interpretation. Individual contribution, rollout, and business impact are not inferred automatically from a ticket.
+The application stores snapshots, not the tracker's full event history. "All tasks" means all accessible tasks in the selected project and period: there is no task-count cap, and pagination runs to completion. Import, analysis, and self-review operate in batches; incomplete coverage is shown explicitly. A correct quotation does not guarantee a correct interpretation. Individual contribution, rollout, and business impact are not inferred automatically from a ticket.
 
 The main trade-offs are a custom orchestrator over the OpenAI SDK with application-owned limits, retries, and traces; manually entered API tokens instead of OAuth; and current snapshots instead of historical attribution. Batch processing bounds each operation, while total time and cost grow with volume. Details and alternatives: [decisions](docs/README.md#decisions).
 

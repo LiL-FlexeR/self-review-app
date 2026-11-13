@@ -4,19 +4,19 @@
 
 - The saved description states: Add an index to speed up the API. (task_description)
   > Add an index to speed up the API.
-  Source: sync:2c6e32b4-48c5-4b5f-8ba4-797549a6f8af:issue:DEMO-101:description
+  Source: sync:739b247f-d99c-4f7d-9261-f179b4992132:issue:DEMO-101:description
 
 - The saved comment states: After adding the index, p95 decreased from 1200 to 900 ms on staging, based on 1000 requests. Production rollout is not confirmed. (reported_measurement)
   > After adding the index, p95 decreased from 1200 to 900 ms on staging, based on 1000 requests. Production rollout is not confirmed.
-  Source: sync:2c6e32b4-48c5-4b5f-8ba4-797549a6f8af:comment:b5d8b4a2-8afb-43da-b430-b69d96bcdbdc
+  Source: sync:739b247f-d99c-4f7d-9261-f179b4992132:comment:fec854a4-0767-4d16-acca-603b16e76615
 
 - The saved description states: Add retries for transient errors (task_description)
   > Add retries for transient errors
-  Source: sync:2c6e32b4-48c5-4b5f-8ba4-797549a6f8af:issue:DEMO-102:description
+  Source: sync:739b247f-d99c-4f7d-9261-f179b4992132:issue:DEMO-102:description
 
 - The saved description states: Plan the next reliability experiment. (task_description)
   > Plan the next reliability experiment.
-  Source: sync:2c6e32b4-48c5-4b5f-8ba4-797549a6f8af:issue:DEMO-110:description
+  Source: sync:739b247f-d99c-4f7d-9261-f179b4992132:issue:DEMO-110:description
 
 ## Limitations
 

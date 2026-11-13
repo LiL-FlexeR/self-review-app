@@ -1,14 +1,14 @@
 {
 	"items": [
 		{
-			"batchId": "6af20131-bb76-45da-9358-193d2f805030",
+			"batchId": "d83d76ec-b54e-438a-8436-08551926f60f",
 			"level": 0,
 			"events": [
 				{
 					"event": "unit_started",
 					"phase": "sync",
 					"taskCount": 6,
-					"timestamp": "2026-11-13T03:29:38.883Z",
+					"timestamp": "2026-11-13T11:50:28.697Z",
 					"batchLevel": 0,
 					"claimCount": 0,
 					"sourceCount": 0,
@@ -17,7 +17,7 @@
 				{
 					"event": "model_started",
 					"attempt": 1,
-					"timestamp": "2026-11-13T03:29:38.894Z",
+					"timestamp": "2026-11-13T11:50:28.703Z",
 					"sourceCount": 0,
 					"unitAttempt": 1,
 					"historyItems": 1
@@ -25,8 +25,8 @@
 				{
 					"event": "model_completed",
 					"attempt": 1,
-					"timestamp": "2026-11-13T03:29:38.906Z",
-					"durationMs": 7,
+					"timestamp": "2026-11-13T11:50:28.712Z",
+					"durationMs": 4,
 					"usageKnown": false,
 					"outputBytes": 0,
 					"unitAttempt": 1,
@@ -36,7 +36,7 @@
 					"tool": "list_issues",
 					"event": "tool_started",
 					"attempt": 1,
-					"timestamp": "2026-11-13T03:29:38.911Z",
+					"timestamp": "2026-11-13T11:50:28.715Z",
 					"unitAttempt": 1
 				},
 				{
@@ -44,15 +44,15 @@
 					"bytes": 920,
 					"event": "tool_completed",
 					"attempt": 1,
-					"timestamp": "2026-11-13T03:29:38.920Z",
-					"durationMs": 9,
+					"timestamp": "2026-11-13T11:50:28.719Z",
+					"durationMs": 4,
 					"sourceCount": 0,
 					"unitAttempt": 1
 				},
 				{
 					"event": "model_started",
 					"attempt": 2,
-					"timestamp": "2026-11-13T03:29:38.937Z",
+					"timestamp": "2026-11-13T11:50:28.730Z",
 					"sourceCount": 0,
 					"unitAttempt": 2,
 					"historyItems": 3
@@ -60,7 +60,7 @@
 				{
 					"event": "model_completed",
 					"attempt": 2,
-					"timestamp": "2026-11-13T03:29:38.946Z",
+					"timestamp": "2026-11-13T11:50:28.737Z",
 					"durationMs": 4,
 					"usageKnown": false,
 					"outputBytes": 0,
@@ -71,7 +71,7 @@
 					"tool": "get_issue_details",
 					"event": "tool_started",
 					"attempt": 2,
-					"timestamp": "2026-11-13T03:29:38.953Z",
+					"timestamp": "2026-11-13T11:50:28.739Z",
 					"unitAttempt": 2
 				},
 				{
@@ -79,15 +79,15 @@
 					"bytes": 5065,
 					"event": "tool_completed",
 					"attempt": 2,
-					"timestamp": "2026-11-13T03:29:38.961Z",
-					"durationMs": 8,
+					"timestamp": "2026-11-13T11:50:28.744Z",
+					"durationMs": 5,
 					"sourceCount": 11,
 					"unitAttempt": 2
 				},
 				{
 					"event": "model_started",
 					"attempt": 3,
-					"timestamp": "2026-11-13T03:29:38.988Z",
+					"timestamp": "2026-11-13T11:50:28.751Z",
 					"sourceCount": 11,
 					"unitAttempt": 3,
 					"historyItems": 5
@@ -95,8 +95,8 @@
 				{
 					"event": "model_completed",
 					"attempt": 3,
-					"timestamp": "2026-11-13T03:29:38.999Z",
-					"durationMs": 5,
+					"timestamp": "2026-11-13T11:50:28.757Z",
+					"durationMs": 3,
 					"usageKnown": false,
 					"outputBytes": 0,
 					"unitAttempt": 3,
@@ -106,7 +106,7 @@
 					"tool": "get_issue_comments",
 					"event": "tool_started",
 					"attempt": 3,
-					"timestamp": "2026-11-13T03:29:39.002Z",
+					"timestamp": "2026-11-13T11:50:28.759Z",
 					"unitAttempt": 3
 				},
 				{
@@ -122,15 +122,15 @@
 					"bytes": 612,
 					"event": "tool_completed",
 					"attempt": 3,
-					"timestamp": "2026-11-13T03:29:39.028Z",
-					"durationMs": 26,
+					"timestamp": "2026-11-13T11:50:28.770Z",
+					"durationMs": 11,
 					"sourceCount": 12,
 					"unitAttempt": 3
 				},
 				{
 					"event": "model_started",
 					"attempt": 4,
-					"timestamp": "2026-11-13T03:29:39.051Z",
+					"timestamp": "2026-11-13T11:50:28.775Z",
 					"sourceCount": 12,
 					"unitAttempt": 4,
 					"historyItems": 7
@@ -138,7 +138,7 @@
 				{
 					"event": "model_completed",
 					"attempt": 4,
-					"timestamp": "2026-11-13T03:29:39.070Z",
+					"timestamp": "2026-11-13T11:50:28.780Z",
 					"durationMs": 3,
 					"usageKnown": false,
 					"outputBytes": 1713,
@@ -150,7 +150,7 @@
 					"event": "unit_completed",
 					"attempt": 4,
 					"corrected": false,
-					"timestamp": "2026-11-13T03:29:39.076Z",
+					"timestamp": "2026-11-13T11:50:28.786Z",
 					"claimCount": 5,
 					"sourceCount": 12,
 					"unitAttempt": 4

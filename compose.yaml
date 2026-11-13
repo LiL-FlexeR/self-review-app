@@ -1,5 +1,5 @@
 x-app: &app
-  image: self-review-app:s04
+  image: self-review-app:s06
   build: .
   env_file: .env
   environment:
@@ -34,7 +34,7 @@ services:
     ports: ['127.0.0.1:8025:8025']
     healthcheck: { test: ['CMD', '/mailpit', 'readyz'], interval: 2s, timeout: 3s, retries: 30 }
   migrate:
-    image: self-review-app:s04
+    image: self-review-app:s06
     build: .
     environment: { DATABASE_URL: 'postgresql://self_review:local_dev@postgres:5432/self_review' }
     command: ['npm', 'run', 'migrate', '-w', 'backend']

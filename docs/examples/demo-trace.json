@@ -1,0 +1,186 @@
+{
+	"sync": {
+		"items": [
+			{
+				"batchId": "4e733814-76d5-4fb3-a729-c7b84cdcc232",
+				"level": 0,
+				"events": [
+					{
+						"event": "unit_started",
+						"phase": "sync",
+						"taskCount": 6,
+						"timestamp": "2026-11-13T12:15:36.919Z",
+						"batchLevel": 0,
+						"claimCount": 0,
+						"sourceCount": 0,
+						"attemptLimit": 8
+					},
+					{
+						"event": "model_started",
+						"attempt": 1,
+						"timestamp": "2026-11-13T12:15:36.925Z",
+						"sourceCount": 0,
+						"unitAttempt": 1,
+						"historyItems": 1
+					},
+					{
+						"event": "model_completed",
+						"attempt": 1,
+						"timestamp": "2026-11-13T12:15:38.101Z",
+						"durationMs": 1173,
+						"usageKnown": true,
+						"inputTokens": 570,
+						"outputBytes": 0,
+						"unitAttempt": 1,
+						"outputTokens": 15,
+						"providerStatus": "completed",
+						"reasoningTokens": 0,
+						"cachedInputTokens": 0
+					},
+					{
+						"tool": "list_issues",
+						"event": "tool_started",
+						"attempt": 1,
+						"timestamp": "2026-11-13T12:15:38.104Z",
+						"unitAttempt": 1
+					},
+					{
+						"tool": "list_issues",
+						"bytes": 920,
+						"event": "tool_completed",
+						"attempt": 1,
+						"timestamp": "2026-11-13T12:15:38.107Z",
+						"durationMs": 3,
+						"sourceCount": 0,
+						"unitAttempt": 1
+					},
+					{
+						"event": "model_started",
+						"attempt": 2,
+						"timestamp": "2026-11-13T12:15:38.115Z",
+						"sourceCount": 0,
+						"unitAttempt": 2,
+						"historyItems": 3
+					},
+					{
+						"event": "model_completed",
+						"attempt": 2,
+						"timestamp": "2026-11-13T12:15:40.468Z",
+						"durationMs": 2351,
+						"usageKnown": true,
+						"inputTokens": 934,
+						"outputBytes": 0,
+						"unitAttempt": 2,
+						"outputTokens": 89,
+						"providerStatus": "completed",
+						"reasoningTokens": 38,
+						"cachedInputTokens": 0
+					},
+					{
+						"tool": "get_issue_details",
+						"event": "tool_started",
+						"attempt": 2,
+						"timestamp": "2026-11-13T12:15:40.473Z",
+						"unitAttempt": 2
+					},
+					{
+						"tool": "get_issue_details",
+						"bytes": 5065,
+						"event": "tool_completed",
+						"attempt": 2,
+						"timestamp": "2026-11-13T12:15:40.486Z",
+						"durationMs": 13,
+						"sourceCount": 11,
+						"unitAttempt": 2
+					},
+					{
+						"event": "model_started",
+						"attempt": 3,
+						"timestamp": "2026-11-13T12:15:40.495Z",
+						"sourceCount": 11,
+						"unitAttempt": 3,
+						"historyItems": 6
+					},
+					{
+						"event": "model_completed",
+						"attempt": 3,
+						"timestamp": "2026-11-13T12:15:46.575Z",
+						"durationMs": 6077,
+						"usageKnown": true,
+						"inputTokens": 3228,
+						"outputBytes": 2793,
+						"unitAttempt": 3,
+						"outputTokens": 1213,
+						"providerStatus": "completed",
+						"reasoningTokens": 386,
+						"cachedInputTokens": 0
+					},
+					{
+						"count": 11,
+						"event": "unit_completed",
+						"attempt": 3,
+						"corrected": false,
+						"timestamp": "2026-11-13T12:15:46.585Z",
+						"claimCount": 6,
+						"sourceCount": 11,
+						"unitAttempt": 3
+					}
+				]
+			}
+		],
+		"nextCursor": null
+	},
+	"review": {
+		"items": [
+			{
+				"batchId": "c59178c5-326b-45f7-84f2-bad8c634a1a7",
+				"level": 0,
+				"events": [
+					{
+						"event": "unit_started",
+						"phase": "review",
+						"taskCount": 5,
+						"timestamp": "2026-11-13T12:16:09.640Z",
+						"batchLevel": 0,
+						"claimCount": 0,
+						"sourceCount": 9,
+						"attemptLimit": 2
+					},
+					{
+						"event": "model_started",
+						"attempt": 1,
+						"timestamp": "2026-11-13T12:16:09.648Z",
+						"sourceCount": 9,
+						"unitAttempt": 1,
+						"historyItems": 1
+					},
+					{
+						"event": "model_completed",
+						"attempt": 1,
+						"timestamp": "2026-11-13T12:16:16.755Z",
+						"durationMs": 7105,
+						"usageKnown": true,
+						"inputTokens": 2246,
+						"outputBytes": 2665,
+						"unitAttempt": 1,
+						"outputTokens": 961,
+						"providerStatus": "completed",
+						"reasoningTokens": 214,
+						"cachedInputTokens": 2048
+					},
+					{
+						"count": 3,
+						"event": "unit_completed",
+						"attempt": 1,
+						"corrected": false,
+						"timestamp": "2026-11-13T12:16:16.762Z",
+						"claimCount": 5,
+						"sourceCount": 9,
+						"unitAttempt": 1
+					}
+				]
+			}
+		],
+		"nextCursor": null
+	}
+}

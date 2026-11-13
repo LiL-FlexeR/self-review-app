@@ -137,6 +137,28 @@ it('runs authenticated sync, tools, automatic review, persisted SSE and exports'
 	expect(event.text).toContain(`id: ${sampleId}/`);
 	expect(event.text).toContain('"state":"succeeded"');
 	await mkdir('docs/examples', { recursive: true });
+	const fixture = runtime.app.get(FixtureService);
+	const inputPage = await fixture.list('demo-platform', 0);
+	const inputTasks = await Promise.all(
+		inputPage.items.map(async (task) => ({
+			...task,
+			availableComments: await fixture.comments(task.externalId),
+		})),
+	);
+	await writeFile(
+		'docs/examples/offline-input.json',
+		JSON.stringify(
+			{
+				mode: 'offline',
+				project: 'demo-platform',
+				selection: period,
+				subjectSourceUserId: 'demo-anna',
+				tasks: inputTasks,
+			},
+			null,
+			'\t',
+		) + '\n',
+	);
 	await writeFile('docs/examples/offline-review.json', JSON.stringify(report, null, '\t') + '\n');
 	await writeFile('docs/examples/offline-review.md', report.markdown + '\n');
 	await writeFile(
