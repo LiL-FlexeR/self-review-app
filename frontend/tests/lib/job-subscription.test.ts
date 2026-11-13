@@ -1,5 +1,5 @@
 import { afterEach, it, expect, vi } from 'vitest';
-import { JobSubscription } from './job-subscription';
+import { JobSubscription } from '@app/lib/job-subscription';
 import { ClientError } from '@app/auth/coordinator';
 import type { TJobView } from '@self-review/contracts';
 const state: TJobView = {

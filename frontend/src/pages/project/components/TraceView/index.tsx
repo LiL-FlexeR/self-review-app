@@ -1,8 +1,6 @@
 import { useState } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
-import { z as zod } from 'zod';
-import { pageOf } from '@self-review/contracts';
-import { read, canRetainSavedRead } from '@app/lib/api';
+import { useJobTrace } from '@app/api/hooks/jobs/use-job-trace';
+import { canRetainSavedRead } from '@app/lib/api';
 import { Button } from '@app/components/ui/Button';
 import { Status } from '@app/components/ui/Status';
 import { EmptyState } from '@app/components/templates/EmptyState';
@@ -12,30 +10,9 @@ import { SavedIdentifier } from '@app/pages/project/components/SavedIdentifier';
 import { formatTaskDate } from '@app/pages/project/task-presentation';
 import { presentTraceEvent } from './presentation';
 
-const TraceUnit = zod.object({
-	batchId: zod.string(),
-	level: zod.number(),
-	events: zod.array(zod.unknown()),
-});
-
 export function TraceView({ runId, userId }: { runId: string; userId: string }) {
 	const [open, setOpen] = useState(false);
-	const trace = useInfiniteQuery({
-		queryKey: [userId, 'trace', runId],
-		enabled: open,
-		retry: false,
-		initialPageParam: '0',
-		queryFn: ({ signal, pageParam }) =>
-			read(
-				`/jobs/${runId}/trace?cursor=${encodeURIComponent(pageParam)}`,
-				pageOf(TraceUnit),
-				signal,
-			),
-		getNextPageParam: (lastPage, _pages, _lastParam, pageParams) =>
-			lastPage.nextCursor && !pageParams.includes(lastPage.nextCursor)
-				? lastPage.nextCursor
-				: undefined,
-	});
+	const trace = useJobTrace(runId, userId, open);
 	const savedPages = canRetainSavedRead(trace.error) ? trace.data : undefined;
 	const units = [
 		...new Map(

@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest';
-import { catalogContinuation } from './pagination';
+import { catalogContinuation } from '@app/api/hooks/connections/catalog-pagination';
 
 it('traverses opaque cursors through explicit completion', () => {
 	const first = { items: [{ id: 'project-1' }], nextCursor: 'opaque/next' };

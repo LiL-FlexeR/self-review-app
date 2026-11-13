@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { presentTraceEvent } from './presentation';
+import { presentTraceEvent } from '@app/pages/project/components/TraceView/presentation';
 
 describe('safe trace presentation', () => {
 	it('uses only exposed timing and keeps zero-count outcomes visible', () => {

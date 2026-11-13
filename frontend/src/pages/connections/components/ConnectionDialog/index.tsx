@@ -71,7 +71,14 @@ export function ConnectionDialog({ workspace }: { workspace: TConnectionsWorkspa
 						}
 						error={save.error?.message}
 						onCancel={() => setForm(undefined)}
-						onSubmit={(input) => save.mutate({ ...input, form })}
+						onSubmit={(input) =>
+							save.mutate({
+								...input,
+								formKey: form.key,
+								provider: form.provider,
+								connectionId: form.connectionId,
+							})
+						}
 					/>
 				)}
 			</DialogContent>

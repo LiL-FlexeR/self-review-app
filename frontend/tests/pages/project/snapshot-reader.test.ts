@@ -1,6 +1,7 @@
 import { afterEach, expect, it, vi } from 'vitest';
 import { read } from '@app/lib/api';
-import { readProjectSnapshot, snapshotForDisplay } from './snapshot-reader';
+import { readProjectSnapshot } from '@app/api/hooks/projects/snapshot-reader';
+import { snapshotForDisplay } from '@app/pages/project/snapshot-reader';
 import type { TJobView } from '@self-review/contracts';
 import { ClientError } from '@app/auth/coordinator';
 

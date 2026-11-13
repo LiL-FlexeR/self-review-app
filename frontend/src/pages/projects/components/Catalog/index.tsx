@@ -1,12 +1,10 @@
 import { useEffect, useMemo } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
 import { Check, ChevronDown, LoaderCircle, RotateCw, TriangleAlert } from 'lucide-react';
-import { ProjectView, pageOf } from '@self-review/contracts';
-import { read } from '@app/lib/api';
+import { useConnectionProjects } from '@app/api/hooks/connections/use-connection-projects';
 import { Button } from '@app/components/ui/Button';
 import { catalogKey, projectProviderLabel, uniqueProjects } from '@app/pages/projects/catalog';
 import type { TCatalogSnapshot, TConnection } from '@app/pages/projects/types';
-import { catalogContinuation } from './pagination';
+import { catalogContinuation } from '@app/api/hooks/connections/catalog-pagination';
 
 export function Catalog({
 	connection,
@@ -17,19 +15,7 @@ export function Catalog({
 	userId: string;
 	onChange: (key: string, snapshot: TCatalogSnapshot) => void;
 }) {
-	const catalog = useInfiniteQuery({
-		queryKey: [userId, 'catalog', connection.id],
-		initialPageParam: null as string | null,
-		queryFn: ({ signal, pageParam }) =>
-			read(
-				`/connections/${connection.id}/projects${pageParam === null ? '' : `?cursor=${encodeURIComponent(pageParam)}`}`,
-				pageOf(ProjectView),
-				signal,
-			),
-		getNextPageParam: (_lastPage, pages, _lastParam, pageParams) =>
-			catalogContinuation(pages, pageParams).nextCursor,
-		retry: false,
-	});
+	const catalog = useConnectionProjects(connection.id, userId);
 	const snapshot = useMemo<TCatalogSnapshot>(() => {
 		const pages = catalog.data?.pages ?? [];
 		const { hasLoop } = catalogContinuation(pages, catalog.data?.pageParams ?? []);

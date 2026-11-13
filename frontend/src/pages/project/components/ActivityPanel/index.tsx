@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { JobView } from '@self-review/contracts';
+import { useJob } from '@app/api/hooks/jobs/use-job';
 import type { TProjectWorkspace } from '@app/pages/project/use-project-workspace';
-import { read, canRetainSavedRead } from '@app/lib/api';
+import { canRetainSavedRead } from '@app/lib/api';
 import { snapshotLabel } from '@app/pages/project/snapshot-period';
 import { jobHeading, jobCounters } from '@app/pages/project/components/SyncProgress/presentation';
 import { RunDetails } from '@app/pages/project/components/RunDetails';
@@ -20,11 +19,7 @@ export function ActivityPanel({ workspace }: { workspace: TProjectWorkspace }) {
 		setInspected({ snapshotId });
 	}
 	const inspectedId = inspected.runId ?? snapshot?.runId;
-	const execution = useQuery({
-		queryKey: [userId, 'job', inspectedId],
-		enabled: !!inspected.runId && !!userId,
-		queryFn: ({ signal }) => read(`/jobs/${inspectedId}`, JobView, signal),
-	});
+	const execution = useJob(inspectedId, userId, !!inspected.runId && !!userId);
 	const inspectedRun = inspected.runId ? execution.data : snapshot;
 	const recent = project.data?.runs ?? [];
 	const retryHistory = () => {

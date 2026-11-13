@@ -1,6 +1,6 @@
 import { expect, it } from 'vitest';
 import type { TJobView } from '@self-review/contracts';
-import { jobCounters, jobHeading } from './presentation';
+import { jobCounters, jobHeading } from '@app/pages/project/components/SyncProgress/presentation';
 
 const job: TJobView = {
 	runId: '11111111-1111-4111-8111-111111111111',

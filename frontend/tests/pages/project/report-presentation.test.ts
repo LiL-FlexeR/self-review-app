@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ReportDraft } from '@self-review/contracts';
-import { evidenceKey, reportCitations } from './report-presentation';
+import { evidenceKey, reportCitations } from '@app/pages/project/report-presentation';
 
 describe('saved report citations', () => {
 	it('numbers exact source and quotation pairs across work areas', () => {

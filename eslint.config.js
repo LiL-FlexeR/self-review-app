@@ -55,6 +55,7 @@ export default tseslint.config(
 			'backend/src/**/*.ts',
 			'backend/test/**/*.ts',
 			'frontend/src/**/*.{ts,tsx}',
+			'frontend/tests/**/*.{ts,tsx}',
 			'contracts/src/**/*.ts',
 		],
 		languageOptions: {
@@ -73,7 +74,12 @@ export default tseslint.config(
 		},
 	},
 	{
-		files: ['backend/src/**/*.ts', 'frontend/src/**/*.{ts,tsx}', 'contracts/src/**/*.ts'],
+		files: [
+			'backend/src/**/*.ts',
+			'frontend/src/**/*.{ts,tsx}',
+			'frontend/tests/**/*.{ts,tsx}',
+			'contracts/src/**/*.ts',
+		],
 		rules: {
 			'no-restricted-imports': [
 				'error',
@@ -121,6 +127,6 @@ export default tseslint.config(
 	},
 	{
 		...reactHooks.configs.flat.recommended,
-		files: ['frontend/src/**/*.{ts,tsx}'],
+		files: ['frontend/src/**/*.{ts,tsx}', 'frontend/tests/**/*.{ts,tsx}'],
 	},
 );

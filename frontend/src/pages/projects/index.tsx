@@ -1,9 +1,7 @@
 import { useSyncExternalStore } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import { ConnectionsView } from '@self-review/contracts';
+import { useConnections } from '@app/api/hooks/connections/use-connections';
 import { auth } from '@app/auth/session';
-import { read } from '@app/lib/api';
 import { AppShell } from '@app/components/templates/AppShell';
 import { EmptyState } from '@app/components/templates/EmptyState';
 import { ErrorState } from '@app/components/templates/ErrorState';
@@ -13,11 +11,7 @@ import { ProjectsWorkspace } from '@app/pages/projects/components/ProjectsWorksp
 
 export function ProjectsPage() {
 	const identity = useSyncExternalStore(auth.subscribe, auth.snapshot);
-	const connections = useQuery({
-		queryKey: [identity?.user.id, 'connections'],
-		enabled: !!identity,
-		queryFn: ({ signal }) => read('/connections', ConnectionsView, signal),
-	});
+	const connections = useConnections(identity?.user.id);
 	return (
 		<AppShell
 			contentWidth="projects"

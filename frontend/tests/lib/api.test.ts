@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ClientError } from '@app/auth/coordinator';
-import { canRetainSavedRead } from './api';
+import { canRetainSavedRead } from '@app/lib/api';
 
 describe('saved data after a read failure', () => {
 	it.each([401, 403, 404])(

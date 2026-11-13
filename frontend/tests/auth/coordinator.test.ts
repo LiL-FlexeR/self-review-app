@@ -1,5 +1,5 @@
 import { it, expect, vi } from 'vitest';
-import { Coordinator, ClientError, type TLock } from './coordinator';
+import { Coordinator, ClientError, type TLock } from '@app/auth/coordinator';
 import type { TIdentity } from '@self-review/contracts';
 
 const one: TIdentity = {

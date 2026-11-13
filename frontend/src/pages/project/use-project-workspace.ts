@@ -1,19 +1,15 @@
-import { useRef, useState } from 'react';
-import { useInfiniteQuery, useMutation, useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { useSearchParams } from 'react-router';
-import {
-	AcceptedJob,
-	ProjectDetail,
-	TaskView,
-	pageOf,
-	JobView,
-	ReviewView,
-} from '@self-review/contracts';
-import { queryClient } from '@app/auth/session';
-import { read, command } from '@app/lib/api';
+import { useProject } from '@app/api/hooks/projects/use-project';
+import { useJob } from '@app/api/hooks/jobs/use-job';
+import { useReview } from '@app/api/hooks/reviews/use-review';
+import { useProjectSyncs } from '@app/api/hooks/projects/use-project-syncs';
+import { useProjectSnapshot } from '@app/api/hooks/projects/use-project-snapshot';
+import { useSnapshotPeriod } from '@app/api/hooks/projects/use-snapshot-period';
+import { useProjectTasks } from '@app/api/hooks/projects/use-project-tasks';
+import { useProjectCommand } from '@app/api/hooks/projects/use-project-command';
 import { useJobStream } from '@app/hooks/use-job-stream';
-import { resolveSnapshotPeriod } from './snapshot-period';
-import { readProjectSnapshot, snapshotForDisplay } from './snapshot-reader';
+import { snapshotForDisplay } from './snapshot-reader';
 
 interface ISnapshotScope {
 	snapshotId: string | undefined;
@@ -39,7 +35,6 @@ function createSnapshotScope(snapshotId: string | undefined): ISnapshotScope {
 
 export function useProjectWorkspace(id: string, userId: string | undefined) {
 	const hasIdentity = !!userId;
-	const key = [userId, 'project', id];
 	const [search, setSearch] = useSearchParams();
 	const [startDate, setStart] = useState('2026-10-01');
 	const [endDate, setEnd] = useState('2026-10-31');
@@ -49,51 +44,28 @@ export function useProjectWorkspace(id: string, userId: string | undefined) {
 	const [scope, setScope] = useState(() => createSnapshotScope(undefined));
 
 	const [acceptedId, setAcceptedId] = useState<string>();
-	const pendingCommand = useRef<{ fingerprint: string; key: string } | null>(null);
-	const project = useQuery({
-		queryKey: key,
-		enabled: hasIdentity,
-		queryFn: ({ signal }) => read(`/projects/${id}`, ProjectDetail, signal),
-	});
+	const project = useProject(id, userId);
 	const active = project.data?.runs.find((run) => ['queued', 'running'].includes(run.state));
 	// Retain an observed automatic child after it leaves the active-run preview.
 	if (active && active.runId !== acceptedId) {
 		setAcceptedId(active.runId);
 	}
 	const runId = active?.runId ?? acceptedId;
-	const job = useQuery({
-		queryKey: [userId, 'job', runId],
-		enabled: !!runId,
-		queryFn: ({ signal }) => read(`/jobs/${runId}`, JobView, signal),
-	});
+	const job = useJob(runId, userId);
 	const stream = useJobStream(runId, userId, id);
 	const resultReportId = job.data?.type === 'review' ? job.data.resultRef : null;
-	const completedReport = useQuery({
-		queryKey: [userId, 'report', resultReportId],
-		enabled:
-			hasIdentity &&
-			!!resultReportId &&
-			['succeeded', 'partial'].includes(job.data?.state ?? ''),
-		queryFn: ({ signal }) => read(`/reviews/${resultReportId}`, ReviewView, signal),
-	});
-	const history = useInfiniteQuery({
-		queryKey: [...key, 'history'],
-		enabled: hasIdentity,
-		initialPageParam: '0',
-		queryFn: ({ signal, pageParam }) =>
-			read(`/projects/${id}/syncs?cursor=${pageParam}`, pageOf(JobView), signal),
-		getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-	});
+	const completedReport = useReview(
+		resultReportId,
+		userId,
+		hasIdentity && !!resultReportId && ['succeeded', 'partial'].includes(job.data?.state ?? ''),
+	);
+	const history = useProjectSyncs(id, userId);
 	const syncs = history.data?.pages.flatMap((page) => page.items) ?? [];
 	const snapshotId =
 		search.get('snapshot') ??
 		project.data?.latestSuccessfulSync?.runId ??
 		syncs.find((run) => run.state === 'partial')?.runId;
-	const selectedSnapshot = useQuery({
-		queryKey: [...key, 'snapshot', snapshotId],
-		enabled: !!snapshotId && hasIdentity,
-		queryFn: ({ signal }) => readProjectSnapshot(id, snapshotId!, signal),
-	});
+	const selectedSnapshot = useProjectSnapshot(id, snapshotId, userId);
 	const snapshot = snapshotForDisplay(selectedSnapshot.data, selectedSnapshot.error);
 	if (scope.snapshotId !== snapshotId) {
 		setScope(createSnapshotScope(snapshotId));
@@ -111,21 +83,7 @@ export function useProjectWorkspace(id: string, userId: string | undefined) {
 	const setAllowPartial = (allowPartial: boolean) => updateScope({ allowPartial });
 	const setRefreshOpen = (refreshOpen: boolean) => updateScope({ refreshOpen });
 	const setSelectedAuto = (selectedAuto: boolean) => updateScope({ selectedAuto });
-	const period = useQuery({
-		queryKey: [...key, 'period', snapshotId],
-		enabled: !!snapshot && hasIdentity,
-		retry: false,
-		queryFn: ({ signal }) => {
-			if (!snapshot) {
-				throw new Error('Load an accessible snapshot before resolving its period.');
-			}
-			return resolveSnapshotPeriod(
-				snapshot,
-				(baseId, baseSignal) => read(`/jobs/${baseId}`, JobView, baseSignal),
-				signal,
-			);
-		},
-	});
+	const period = useSnapshotPeriod(id, snapshotId, snapshot, userId);
 	const selectSnapshot = (nextId: string) => {
 		setSearch((previous) => {
 			const next = new URLSearchParams(previous);
@@ -134,49 +92,16 @@ export function useProjectWorkspace(id: string, userId: string | undefined) {
 		});
 	};
 	const automaticReviewId = snapshot?.reviewRunId;
-	const automaticReview = useQuery({
-		queryKey: [userId, 'job', automaticReviewId],
-		enabled: !!automaticReviewId && hasIdentity,
-		queryFn: ({ signal }) => read(`/jobs/${automaticReviewId}`, JobView, signal),
-	});
+	const automaticReview = useJob(automaticReviewId, userId, !!automaticReviewId && hasIdentity);
 
 	const reportId = snapshot?.currentReviewReportId;
-	const report = useQuery({
-		queryKey: [userId, 'report', reportId],
-		enabled: !!reportId && hasIdentity,
-		queryFn: ({ signal }) => read(`/reviews/${reportId}`, ReviewView, signal),
-	});
+	const report = useReview(reportId, userId);
 
-	const tasks = useQuery({
-		queryKey: [...key, 'tasks', snapshotId, cursor],
-		enabled: !!snapshot && hasIdentity,
-		queryFn: ({ signal }) =>
-			read(
-				`/projects/${id}/tasks?syncRunId=${snapshotId}&cursor=${cursor}`,
-				pageOf(TaskView),
-				signal,
-			),
-	});
-	const mutation = useMutation({
-		retry: false,
-		mutationFn: async ({ action, body }: { action: 'syncs' | 'reviews'; body: object }) => {
-			const fingerprint = JSON.stringify({ action, body });
-			if (pendingCommand.current?.fingerprint !== fingerprint) {
-				pendingCommand.current = { fingerprint, key: crypto.randomUUID() };
-			}
-			return command(
-				`/projects/${id}/${action}`,
-				{ ...body, idempotencyKey: pendingCommand.current!.key },
-				AcceptedJob,
-			);
-		},
-		onSuccess: async (result) => {
-			pendingCommand.current = null;
-			setAcceptedId(result.runId);
-			setRefreshOpen(false);
-			setSelected([]);
-			await queryClient.invalidateQueries({ queryKey: key });
-		},
+	const tasks = useProjectTasks(id, snapshotId, cursor, userId, !!snapshot && hasIdentity);
+	const mutation = useProjectCommand(id, userId, (runId) => {
+		setAcceptedId(runId);
+		setRefreshOpen(false);
+		setSelected([]);
 	});
 	const busy =
 		mutation.isPending ||

@@ -1,6 +1,6 @@
 import { useState, useSyncExternalStore } from 'react';
 import { Navigate, useLocation } from 'react-router';
-import { useQuery } from '@tanstack/react-query';
+import { useAccount } from '@app/api/hooks/auth/use-account';
 import { auth } from '@app/auth/session';
 import { Button } from '@app/components/ui/Button';
 import { Status } from '@app/components/ui/Status';
@@ -18,11 +18,7 @@ export function AppShell({
 	const location = useLocation();
 	const [error, setError] = useState('');
 	const [busy, setBusy] = useState(false);
-	const account = useQuery({
-		queryKey: ['account', user?.user.id, user?.sid],
-		queryFn: ({ signal }) => auth.request('/auth/me', { signal }),
-		enabled: !!user,
-	});
+	const account = useAccount(user);
 
 	if (!user) {
 		return <Navigate to="/login" state={{ returnTo: location.pathname }} replace />;

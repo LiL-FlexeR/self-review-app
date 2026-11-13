@@ -8,6 +8,11 @@ Each React component has a `PascalCase` directory and its implementation in `ind
 
 ```text
 src/
+  api/
+    hooks/
+      connections/
+        use-connections.ts
+        use-save-connection.ts
   App/index.tsx
   pages/
     auth/
@@ -31,19 +36,22 @@ src/
   auth/                 # session/coordinator infrastructure
   lib/utils.ts
   styles/globals.css
+tests/                  # mirrors src/ for unit and component tests
 ```
 
 - `pages/<route>/components/` owns components used only by that page. Components local to a template belong in that template's `components/` directory.
 - `components/ui/` owns basic UI primitives, including adapted shadcn/ui source. `components/templates/` owns shared composed blocks and behavior, such as OTP reused for login, signup, or a later confirmation flow. Only currently authorized flows are implemented.
 - Do not create root-level `components/<feature>/` groups. Promote a local component to a shared template when another page/scenario needs it.
-- Keep component-local props/types in `types.ts` when they merit a separate file; hooks, helpers, tests, and any necessary local styles stay in the same component directory. Use the established Tailwind/global theme before adding local styling. Create only files that have content.
+- Keep component-local props/types in `types.ts` when they merit a separate file; local UI hooks, helpers, and any necessary local styles stay in the same component directory. Use the established Tailwind/global theme before adding local styling. Create only files that have content.
+- Put backend query and mutation hooks in `src/api/hooks/<resource>/`, with one named hook per `use-*.ts` file, for example `api/hooks/connections/use-connections.ts` exports `useConnections`. These hooks own request validation, query keys, cancellation, pagination, mutation retry/idempotency policy, and cache reconciliation. Keep resource-specific helpers/types with the hooks. Page controllers compose them with local form, selection, dialog, and feedback state; API hooks do not import pages or UI components. Authentication coordination and SSE transport remain infrastructure under their existing owners.
+- Put all frontend tests in `frontend/tests/`, mirroring the source hierarchy: `tests/api/hooks/connections/catalog-pagination.test.ts` or `tests/components/ui/Status/index.test.tsx`. Import production code through `@app/...`. Vitest discovery, TypeScript checking, and ESLint include this directory.
 - A root `src/types/` is optional and holds types actually shared by independent frontend consumers. Types shared only within a page/template stay there. Import public HTTP/SSE types from `@self-review/contracts` rather than duplicating them.
 - Non-component infrastructure such as `auth/session.ts` and `auth/coordinator.ts` stays outside page components. Routes retain their existing URLs; directory organization does not introduce a new route.
 - Prefer direct component imports such as `@app/components/ui/Button`; directory resolution selects `index.tsx`. Ordinary helper/type file names remain `kebab-case`.
 
 ## Imports
 
-- `@app/` resolves to `frontend/src/` in TypeScript, Vite, and the frontend Vitest project. Use extensionless aliases across source directories, including page-local component directories. Same-directory helpers/types/tests can retain short relative imports such as `./types` or `./coordinator`.
+- `@app/` resolves to `frontend/src/` in TypeScript, Vite, and the frontend Vitest project. Use extensionless aliases across source directories and from tests, including page-local component directories. Same-directory helpers/types can retain short relative imports such as `./types` or `./coordinator`.
 - Keep real extensions on assets, for example `import '@app/styles/globals.css';`. ESLint rejects relative paths across source directories, extensions on code aliases, and the old `@/...` prefix.
 - `frontend/components.json` uses the same `@app/...` prefix for shadcn generation. Do not retain a second alias or compatibility copies of imported components.
 - The alias stays local to this workspace; public schemas/types come from `@self-review/contracts`. Each Vitest workspace project has its own alias so frontend tests cannot resolve backend's `src/` by mistake.

@@ -1,7 +1,6 @@
-import { useQuery } from '@tanstack/react-query';
-import { TaskDetail } from '@self-review/contracts';
+import { useTask } from '@app/api/hooks/tasks/use-task';
 import type { ITaskOwner } from '@app/pages/project/task-presentation';
-import { read, canRetainSavedRead } from '@app/lib/api';
+import { canRetainSavedRead } from '@app/lib/api';
 import { TaskDetailView } from '@app/pages/project/components/TaskDetailView';
 import { SheetHeader, SheetTitle, SheetDescription } from '@app/components/ui/Sheet';
 import { ErrorState } from '@app/components/templates/ErrorState';
@@ -16,10 +15,7 @@ export function TaskDetails({
 	userId: string;
 	owner?: ITaskOwner;
 }) {
-	const task = useQuery({
-		queryKey: [userId, 'task', id],
-		queryFn: ({ signal }) => read(`/tasks/${id}`, TaskDetail, signal),
-	});
+	const task = useTask(id, userId);
 	const canRetain = canRetainSavedRead(task.error);
 	if (task.data && canRetain) {
 		return (

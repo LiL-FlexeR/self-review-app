@@ -1,7 +1,8 @@
 import { expect, it, vi } from 'vitest';
 import { QueryClient } from '@tanstack/react-query';
 import type { TJobView } from '@self-review/contracts';
-import { formatPeriod, MAX_PERIOD_LOOKUPS, resolveSnapshotPeriod } from './snapshot-period';
+import { formatPeriod } from '@app/pages/project/snapshot-period';
+import { MAX_PERIOD_LOOKUPS, resolveSnapshotPeriod } from '@app/api/hooks/projects/snapshot-period';
 
 const period = { mode: 'period', startDate: '2026-10-01', endDate: '2026-10-31' } as const;
 function snapshot(index: number, selection: unknown = period): TJobView {

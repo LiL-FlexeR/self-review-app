@@ -36,7 +36,7 @@ function sumSortedNumbers(values: number[]) {
 ## Files and tests
 
 - Keep a local helper/type near its consumer. Move shared code to the nearest common owner when another independent consumer needs it. Do not create empty scaffolding or global `misc`/`helpers` collections.
-- Name unit tests `name.test.ts` or `Component/index.test.tsx` and place them according to the owning workspace guide. Backend module-local unit tests use the module’s `tests/` directory; frontend component-local tests retain their colocated layout. HTTP/persistence integration tests stay in `backend/test/` as `*.integration.test.ts`.
+- Name unit tests `name.test.ts` or `Component/index.test.tsx` and place them according to the owning workspace guide. Backend module-local unit tests use the module’s `tests/` directory; frontend tests use `frontend/tests/`, mirroring their source hierarchy. HTTP/persistence integration tests stay in `backend/test/` as `*.integration.test.ts`.
 - Keep changes to formatting and file movement distinguishable from behavior changes during review. Update all imports when moving a file; do not leave compatibility copies without an actual consumer.
 - Generated Prisma code, installed dependencies, compiled output, and npm's lockfile are not hand-formatted. Formatting covers maintained source/configuration, while Markdown and reference design inputs are excluded in [.prettierignore](../../.prettierignore).
 

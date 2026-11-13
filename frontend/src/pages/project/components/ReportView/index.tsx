@@ -2,7 +2,7 @@ import { useId, useState } from 'react';
 import { Download } from 'lucide-react';
 import { SyncCommand } from '@self-review/contracts';
 import type { IReportCitation, TSavedReview } from '@app/pages/project/report-presentation';
-import type { TPeriodSelection } from '@app/pages/project/snapshot-period';
+import type { TPeriodSelection } from '@app/api/hooks/projects/snapshot-period';
 import type { ITaskOwner } from '@app/pages/project/task-presentation';
 import { formatPeriod } from '@app/pages/project/snapshot-period';
 import { formatTaskDate } from '@app/pages/project/task-presentation';

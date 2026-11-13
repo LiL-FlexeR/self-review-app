@@ -31,7 +31,7 @@ export default defineConfig({
 				resolve: {
 					alias: { '@app': fileURLToPath(new URL('./frontend/src', import.meta.url)) },
 				},
-				test: { name: 'frontend', include: ['frontend/src/**/*.test.{ts,tsx}'] },
+				test: { name: 'frontend', include: ['frontend/tests/**/*.test.{ts,tsx}'] },
 			},
 			{
 				extends: true,

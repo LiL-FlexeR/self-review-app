@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { catalogKey, filterProjects, projectProviderLabel, uniqueProjects } from './catalog';
-import type { TProjectRow } from './types';
+import {
+	catalogKey,
+	filterProjects,
+	projectProviderLabel,
+	uniqueProjects,
+} from '@app/pages/projects/catalog';
+import type { TProjectRow } from '@app/pages/projects/types';
 
 function catalogRow(id: string, provider: string, connectionId = 'connection-one'): TProjectRow {
 	return {
