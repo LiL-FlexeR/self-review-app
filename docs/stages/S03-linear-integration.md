@@ -27,12 +27,6 @@ Exclude OAuth, mutations, webhooks, a custom SDK/codegen framework, and copying 
 
 ## Commands and manual smoke test
 
-```bash
-npm run check
-npm run test:unit
-npm run test:integration
-npm run build
-docker compose up --build
-```
+Follow the shared [verification and startup instructions](README.md#delivery-and-verification-rules), then perform the stage-specific checks below.
 
 APP_MODE=live: complete password+OTP, add a test Read key, select a project and a creation period containing 2–3 tasks with different statuses/assignees, wait for SSE, and check the database-backed page and self-review. Separately test an invalid key and another user's ID. Do not commit secrets/corporate content; record an anonymized real smoke-test result. Without an accessible account, the integration remains unverified; demo does not replace it.

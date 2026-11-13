@@ -8,7 +8,7 @@ Required UI context: read every source in [Frontend design inputs](README.md#fro
 
 ## Changes and boundaries
 
-- Three workspace packages at the root: backend, frontend, contracts. backend contains API/worker entrypoints, Prisma, and fixtures; contracts contains only public HTTP/SSE schemas. Node/ESM/strict TS, selected package/image versions, and a shared lockfile follow [D01](../decisions/D01-stack-and-local-runtime.md).
+- Three workspace packages at the root: backend, frontend, contracts. backend contains API/worker entrypoints, Prisma, and the fixture adapter; contracts contains only public HTTP/SSE schemas. Node/ESM/strict TS, selected package/image versions, and a shared lockfile follow [D01](../decisions/D01-stack-and-local-runtime.md).
 - Compose: Postgres, Redis AOF/noeviction, Mailpit, API/worker image, and migration startup. Health checks, volumes, and loopback, without public database/Redis ports.
 - Prisma schema/migrations, including AuthSession/RefreshToken, the review source-sync relation, provider-slot/activity-slot uniqueness, AnalysisBatch, and per-unit attempts/coverage, follow the [architecture](../architecture/overview.md#data); shared Zod contracts, backend/frontend .env.example files, and scripts. Keep the selected Prisma major from D01 unless a separate compatibility review changes it.
 - Authentication follows [D04](../decisions/D04-auth-and-credentials.md): signup/login, pre-auth challenge, email, verify/resend, JWT access, Postgres-backed refresh rotation, CSRF bootstrap, and logout. Pin a maintained JWT library and validate the independent signing secret at startup. Add the coordinated frontend renewal flow from [frontend data flow](../architecture/overview.md#frontend-data-flow), including same-origin lock availability in the supported local browser.
@@ -31,17 +31,6 @@ Do not implement trackers, the full sync queue, or self-review. Do not add Googl
 
 ## Commands and manual verification
 
-After the initial installation and lockfile creation:
-
-```bash
-npm ci
-npm run infra:up
-npm run db:migrate:test
-npm run check
-npm run test:unit
-npm run test:integration
-npm run build
-npm run docker:up
-```
+Follow the shared [verification and startup instructions](README.md#delivery-and-verification-rules), then perform the stage-specific checks below.
 
 Run signup → Mailpit email → OTP → protected page → access renewal → logout → login/password/OTP again. Check the old code and direct access before verify. Confirm two same-origin tabs do not race automatic refresh and do not retain the previous account's cached data. Record the tested browser/version and actual results without secret values; verify expiry automatically with a controlled test clock rather than changing the agreed default lifetimes.

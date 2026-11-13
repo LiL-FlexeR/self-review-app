@@ -43,13 +43,6 @@ Tests do not require tracker accounts/OpenAI. Assess live output using example i
 
 Every matrix row has automated boundary verification or an explicitly identified manual semantic check. Saved results agree with the API/SSE, the trace is safe, and commands do not use user data.
 
-```bash
-npm run infra:up
-npm run db:migrate:test
-npm run check
-npm run test:unit
-npm run test:integration
-npm run build
-```
+Follow the shared [verification and startup instructions](README.md#delivery-and-verification-rules), then perform the stage-specific checks below.
 
 Manual scenario: demo with injection, close/reopen the page during a job, invalid token, expired OTP/session, and partial analysis. Check the UI and stdout for leaks. Record completed checks and actual limitations without claiming formal semantic safety of the model.

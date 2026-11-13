@@ -12,7 +12,7 @@ Required UI context: read every source in [Frontend design inputs](README.md#fro
 - Document reproducible Compose startup, environment/secret setup, migrations, login and Mailpit, and model/source modes.
 - Add synthetic input/JSON/Markdown, a safe trace, and an explanation of how scripted expectations differ from a live output example.
 - Prepare public Git with code/docs/lockfile/migrations/Compose, without keys/.env/private tickets/volumes/generated artifacts.
-- If implementation time permits, add one CI workflow with the same unit/integration/build checks; do not add deployment, OAuth, or new features.
+- Keep the existing CI workflow aligned with the shared verification sequence; do not add deployment, OAuth, or new features.
 
 ## Evaluator's manual scenario
 
@@ -32,19 +32,10 @@ Required UI context: read every source in [Frontend design inputs](README.md#fro
 - It includes the exact phrase Not in production today, 2–3 types of teams, and required production improvements, including operational monitoring, authorized data access/model transmission, human review, retention, and applicable privacy/compliance requirements.
 - Mailpit mode is not described as delivery to real email; the scripted model is not described as live AI.
 - Unverified adapters and incomplete requirements are explicitly identified. The ROADMAP includes actual time, and the revised scope is not presented as a validated five-hour estimate.
-- The public repository is accessible to the evaluator; publishing the completed set is part of implementation, and no remote is created now.
+- The public repository is accessible to the evaluator; the published code, examples, and CI must match the delivered set.
 
 ## Commands
 
-```bash
-npm ci
-npm run infra:up
-npm run db:migrate:test
-npm run check
-npm run test:unit
-npm run test:integration
-npm run build
-npm run docker:up
-```
+Follow the shared [verification and startup instructions](README.md#delivery-and-verification-rules), then perform the stage-specific checks below.
 
 Repeat checks after a new change, failure, or clean installation. Save actual automated check and manual smoke-test results rather than recording success based on a plan alone.

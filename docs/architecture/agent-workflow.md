@@ -192,55 +192,22 @@ DEMO-102 description is `Add retries for transient errors`, with sourceId=sync:d
 | Review | subjectSourceUserId=demo-anna from sync, sourceSyncRunId=demo-sync-01 | 5 token-owner tasks; Boris's data does not reach the report model |
 | Model review | ReportDraft | Validate, save, notify through SSE, export |
 
-Illustrative expected ReportDraft using the same aliases; real-model wording and actual internal IDs may vary:
+Illustrative expected measurement claim using the same aliases; real-model wording and internal IDs may vary:
 
 ```json
 {
-  "schemaVersion": "1.0",
-  "groups": [
+  "kind": "reported_measurement",
+  "text": "The comment reports that p95 decreased from 1200 to 900 ms on staging, based on 1000 requests; production rollout is not confirmed.",
+  "evidence": [
     {
-      "title": "API performance",
-      "claims": [
-        {
-          "kind": "reported_measurement",
-          "text": "The comment reports that p95 decreased from 1200 to 900 ms on staging, based on 1000 requests; production rollout is not confirmed.",
-          "evidence": [
-            {
-              "sourceId": "sync:demo-sync-01:comment:demo-101-c1",
-              "quote": "p95 decreased from 1200 to 900 ms on staging, based on 1000 requests."
-            }
-          ]
-        }
-      ]
-    },
-    {
-      "title": "Reliability",
-      "claims": [
-        {
-          "kind": "task_description",
-          "text": "DEMO-102 describes retries for transient errors; the task is in progress, and deployment is not confirmed.",
-          "evidence": [
-            {
-              "sourceId": "sync:demo-sync-01:issue:DEMO-102:description",
-              "quote": "Add retries for transient errors"
-            },
-            {
-              "sourceId": "sync:demo-sync-01:issue:DEMO-102:metadata",
-              "quote": "Status: started"
-            }
-          ]
-        }
-      ]
+      "sourceId": "sync:demo-sync-01:comment:demo-101-c1",
+      "quote": "p95 decreased from 1200 to 900 ms on staging, based on 1000 requests."
     }
-  ],
-  "limitations": [
-    "Individual contribution and production impact are not confirmed.",
-    "DEMO-103 is canceled and is not treated as a completed achievement.",
-    "DEMO-108 has no description; only a plan is available for DEMO-110."
-  ],
-  "explanation": "The measurement comes from a comment; planned work is distinguished from reported outcomes."
+  ]
 }
 ```
+
+DEMO-102 may support a task_description claim quoting its description and `Status: started` metadata, without asserting deployment. Canceled DEMO-103 is not a completed achievement; DEMO-108 has no description, and DEMO-110 supplies only a plan. Complete captured JSON/Markdown outputs and their offline/live-model distinctions are maintained in [executed examples](../examples/README.md).
 
 Invariants: sync saves 6 tasks regardless of assignee; generateReview=true creates exactly one automatic review, false creates none; at least two useful tools are actually called; self-review includes only Anna's 5 tasks; the measurement is limited to staging and individual contribution is not asserted; source IDs belong to the selected snapshot and quotes are exact; injection is not executed; export does not call OpenAI.
 

@@ -30,48 +30,19 @@ APP_ORIGIN identifies the browser-facing origin: http://localhost:3000 for Compo
 
 ## Code structure
 
-```text
-backend/
-  src/
-    modules/
-      app.module.ts  # HTTP API root module
-      worker.module.ts # worker root module
-      auth/          # password, OTP, JWT, refresh rotation, CSRF
-      connections/   # credential verification and storage
-      projects/      # catalog and saved-snapshot pages
-      jobs/          # commands, states, SSE, reconciliation
-      agent/         # loop, tool dispatcher, validation, budgets
-      providers/     # Linear, ClickUp, Jira, fixtures
-      reviews/       # saved-snapshot self-review, renderer
-    exceptions/      # Nest exception filters and safe HTTP error mapping
-    utils/           # stateless backend utilities shared across features
-    shared/
-      config/        # ConfigModule, typed ConfigService, Zod environment validation
-      infrastructure/ # InfrastructureModule registers shared providers
-      database/      # DI-managed Prisma client and low-level factory
-      redis/         # DI-managed Redis connection
-      mail/          # DI-managed SMTP transport
-      clock/         # overridable application clock
-      logging/       # Winston output, Nest adapter, async context and diagnostic serialization
-    app.ts           # API construction and runtime boundaries
-    main.ts          # HTTP API
-    worker.ts        # application context and BullMQ worker
-  prisma/            # schema and migrations
-  fixtures/          # synthetic snapshots and expected invariants
-frontend/
-  components.json    # shadcn/ui configuration and aliases
-  src/
-    App/index.tsx    # router composition; local components live under App/components
-    pages/           # route pages; page-only components live under each page
-    components/ui/   # basic UI, including adapted shadcn/ui, as Name/index.tsx
-    components/templates/ # shared composed blocks such as OTP and AppShell
-    auth/            # browser session and account coordination
-    lib/             # shared frontend infrastructure/utilities
-    styles/globals.css # Tailwind entry and semantic theme tokens
-contracts/
-  src/               # shared HTTP/SSE schemas and inferred TypeScript types
-docs/
-```
+| Location | Responsibility |
+| --- | --- |
+| `backend/src/modules/` | API/worker root modules and auth, connections, projects, jobs, agent, and provider features |
+| `backend/src/modules/jobs/` | Commands, queue/reconciliation, SSE state, and saved-snapshot ReviewService |
+| `backend/src/modules/providers/adapters/` | Linear, ClickUp, Jira, and synthetic fixture sources |
+| `backend/src/shared/` | Configuration, credentials, database, Redis, mail, clock, and logging infrastructure |
+| `backend/src/exceptions/`, `backend/src/errors/`, `backend/src/utils/` | Safe HTTP mapping, domain errors, and stateless shared utilities |
+| `backend/src/app.ts`, `backend/src/main.ts`, `backend/src/worker.ts` | API construction and API/worker entrypoints |
+| `backend/prisma/` | Schema and migrations |
+| `frontend/src/` | Router, pages, UI/templates, resource hooks, authentication coordination, and global theme |
+| `frontend/tests/`, `backend/test/` | Frontend tests and backend HTTP/persistence integration tests |
+| `contracts/src/` | Shared browser-safe HTTP/SSE schemas and inferred types |
+| `docs/` | Specifications, decisions, design inputs, stages, and examples |
 
 npm workspaces, ESM, strict TS. The root package.json lists three workspaces: backend, frontend, contracts; each has its own package.json, with one lockfile at the root. Contracts builds to JS/d.ts before backend and frontend. The API and worker are two entrypoints in the same backend package. The Docker build context is the repository root so all three packages are available.
 
@@ -103,19 +74,9 @@ Nest serves index.html for client-page navigation and deep-link reloads. The SPA
 
 ## Frontend UI
 
-shadcn/ui provides the component starting points, Tailwind CSS supplies utility styles through its Vite integration, and a global stylesheet defines semantic theme variables. Initialize shadcn/ui in the existing frontend workspace; component source stays in frontend/src/components/ui, with frontend/components.json and aliases configured for the client SPA.
+shadcn/ui supplies component source, Tailwind CSS supplies utility styles through Vite, and `frontend/src/styles/globals.css` defines semantic theme mappings. AppShell owns the authentication guard/account actions and delegates presentation to AppShellLayout. Page controllers own accepted commands and pending-result feedback above tabs and overlays, so dismissing a form does not lose the result of an accepted mutation.
 
-AppShell composes the shadcn Sidebar provider/navigation/inset, including its Sheet-based mobile presentation; AppSidebar owns only the Connections/Projects links, application identity, account actions and a native session-help disclosure. PageHeader composes the shared wrapping title/description/action region. AppShellLayout owns presentation while AppShell retains the existing authentication guard/account query/logout handling. AppShell applies a page-selected content-width preset inside shared responsive padding; the 240px expanded desktop sidebar retains its offcanvas collapse, and collapsed desktop controls are inert. AuthPanel composes Card for shared authentication/recovery pages, and forms/statuses reuse Label/Input/Button/Alert. Shared visual and feedback foundations follow [DESIGN](../design/DESIGN.md) and the [interface specification](../design/UX.md); the project Overview uses flat sections and a supporting facts column. The Self-review document uses the saved report query from the page controller, with flat work-area sections, visible limitations, separate download/regeneration actions and secondary usage/provenance/trace disclosures. Its report ID and sourceSyncRunId must agree with the selected snapshot before rendering. Citation numbering deduplicates exact source ID/quote pairs within one report; the evidence Sheet reads only that report’s saved registry and restores the citation’s focus when closed. Report changes reset evidence state. Activity separates paginated sync history, the recent 20-execution subset and an inspected execution. Inspecting a recent run reads its owned JobView without changing the selected snapshot. Processing-unit metadata and safe traces are fetched only when their disclosures open, with user/run-scoped infinite queries, cancellation signals, deduplication and cursor-loop protection. Safe event labels and exposed timestamps are primary; unknown safe fields remain in secondary disclosures. Full dated execution/report history remains an API dependency. Component layout and responsive styles use Tailwind classes; globals.css owns tokens, semantic mappings, and base rules under the [frontend styling guide](../codestyle/frontend.md#tailwind-and-component-styling). Selected-refresh confirmation uses a compact Radix Dialog; substantial task/source reading uses one 640px/full-mobile Sheet with an independently scrolling body. Finding citations replace that Sheet’s content with a saved-evidence view and Back to task rather than opening stacked overlays. TaskTable composes semantic Table and Radix Checkbox, with a contextual SelectionToolbar; selection and command identity remain in the project controller. Closing either overlay restores its opener or a stable table/tab fallback when the trigger has disappeared. The task table scrolls within its labeled region in the workspace-width shell, while saved reports use the 760px reading ceiling. Mobile navigation uses the Sidebar's md/768px breakpoint; drawer dismissal/navigation restores the toggle in the current shell. Desktop keyboard collapse moves focus out of a panel before it becomes inert. Close/focus/overflow behavior must be manually verified at an actual narrow viewport rather than inferred from a build.
-
-Connections mounts a user/session-keyed controller for its saved connection query and explicit create/replace/delete mutations. Provider actions use loaded availability and occupied slots; divided account rows expose secondary management details. ProviderForm owns ephemeral inputs inside Dialog, while the controller retains pending-result feedback and query reconciliation after dismissal. Replacement keeps the saved name read-only and sends only credentials. Permanent local deletion uses AlertDialog, preserves safe server-conflict errors and restores the opener or the account-list heading. It does not infer connection-wide job state from ConnectionView; existing server identity, scope and active-job rules remain authoritative.
-
-Projects mounts a user/session-keyed workspace with one independently mounted useInfiniteQuery per connection. Catalog consumes the connection resource hook and owns continuation/retry controls; its read-only projection supplies the merged semantic ProjectTable and loaded-resource counts. Each query retains its user/connection key, cancellation signal, cached successful pages, local-project-ID deduplication and bounded cursor-loop detection. Filters/search are local view state and do not unmount queries or discard pages. Provider errors and incomplete discovery remain per connection; a failed continuation retries the next page, while an initial/refetch/loop failure retries catalog reads. The table uses the existing local project route, externalId for the visible ID, and connection/breadcrumb context. No global search, extra pagination layer, project deletion endpoint or tracker/model mutation is implied.
-
-ProjectPage mounts one controller keyed by application user/session/project. It retains active-run discovery, job subscriptions, command/idempotency state and snapshot-scoped task selection above four local Radix tab panels (Overview, Tasks, Self-review, Activity). Tabs do not change routes or query parameters. The existing snapshot query parameter selects a saved resource and preserves unrelated URL state; snapshot changes reset pagination/selection/partial acknowledgment and close stale panels. Explicit snapshot reads use a project-scoped query key and validate the project/run pair through the existing saved-task endpoint before exposing metadata; they do not fall back after inaccessible responses. Retryable transport failures retain only the already validated snapshot under that same user/project/snapshot key; inaccessible, changed-session and malformed responses clear its displayed context. A cancellable, cycle-checked base-job read resolves tasks-mode selections to their original validated UTC period, with a bounded number of lookups independent of task count. The server continues to authorize each owned job read. Public JobView does not expose run timestamps or captured subject identity; connection identity is verified context, while saved ReviewView owns report provenance. Display only fields exposed by the public contracts.
-
-The persistent context and job strip remain outside panels. Structured transport status is separate from persisted execution state; exhausted/invalid nonterminal recovery offers Reconnect, terminal/inaccessible recovery stops. The persisted read counter counts processed detail records, including retained details during selected refresh; it is not a new tracker-request count. Stage labels and counters do not infer progress percentages or combine completed units across levels with leaf batch counts. Sync saved/target counts never become review-eligible counts; use an available review target/coverage or show unavailable context. Complete paginated sync history and the explicitly recent 20-run preview remain distinct; processing units and traces load when their disclosures open in Activity or Self-review. A terminal heading provides the stage/completion announcement with an explicit result-view action; durable warnings remain readable without duplicating the completion announcement. An observed automatic child remains the displayed execution after it leaves the active preview. Result navigation resolves a saved review’s actual sourceSyncRunId through its existing report read, and selects that snapshot only on explicit action. Shared loading/empty/read-error compositions preserve validated cached content on retryable transport failures and hide it on definitive inaccessible responses; read retry, stream reconnect and new job commands remain separate.
-
-Screens and interactions follow [UX.md](../design/UX.md); appearance and theme integration use all required [frontend design inputs](../stages/README.md#frontend-design-inputs). Add components needed by the planned screens and commit their source and dependency lockfile. The [frontend guide](../codestyle/frontend.md#shadcnui-additions) owns the generator settings, source origins, and current theme adaptations. Source updates require review alongside package updates; composed screens still need the accessibility checks defined in [UX.md](../design/UX.md#shared-states-and-accessibility).
+[UX.md](../design/UX.md) owns screens, navigation, dialogs, focus, and feedback. [DESIGN.md](../design/DESIGN.md) owns composition, dimensions, responsive behavior, and visual adaptations. Read all five [frontend design inputs](../stages/README.md#frontend-design-inputs) for UI work. Component placement, generator settings, and styling rules are defined in the [frontend guide](../codestyle/frontend.md). Composed controls require the manual checks in [UX accessibility](../design/UX.md#shared-states-and-accessibility).
 
 ## Frontend data flow
 
@@ -128,6 +89,18 @@ On a protected request's ACCESS_EXPIRED/ACCESS_MISSING response, coordinate one 
 Replay the protected request at most once only if recovery confirms the same user and AuthSession. For a job-start POST, preserve the exact body and idempotencyKey; the initial authentication 401 must occur before business effects. All business mutations, including replays, hold the same origin-wide authentication lock from the identity recheck through the HTTP response so another tab cannot switch cookies between the check and submission. Recovery reuses an already-held lock without nesting lock acquisition. Do not automatically replay after network errors/5xx or retry the refresh POST. Refresh endpoints never enter their own recovery handler. A definitive refresh 401 ends local authentication; an infrastructure failure shows a retryable error instead of falsely claiming expiry. An EventSource error uses this recovery path before reconnecting; event-stream loss never restarts a job.
 
 On logout, absolute authentication expiry, refresh revocation, or user/session change, cancel pending reads, close event streams, and clear query/auth state before displaying another account. HTTP reads consume cancellation signals, and late responses or queued replays cannot repopulate another user's view. Recheck the identity after acquiring the shared lock and before replay; never send an old account's queued mutation using another account's cookies. The query cache is not persisted to browser storage. Credential lifetimes, CSRF bootstrap, and revocation limits remain defined in [D04](../decisions/D04-auth-and-credentials.md#refresh-logout-and-csrf). [Web Locks](https://developer.mozilla.org/en-US/docs/Web/API/Web_Locks_API) provides same-origin cross-tab coordination; it does not replace database concurrency checks.
+
+### Resource ownership and saved context
+
+Connections and Projects mount controllers keyed by application user/session; ProjectPage also includes project identity. Connection forms own ephemeral credential inputs, while their page controller owns mutation reconciliation after dismissal. Provider availability and occupied slots come from saved API resources; connection-wide job state is not inferred from ConnectionView.
+
+The project catalog mounts one infinite query per connection. Queries retain user/connection keys, cancellation signals, successful pages, local-project-ID deduplication and bounded cursor-loop detection. Local search/filters do not unmount queries or discard pages. Provider failure stays per connection; failed continuation retries its next page, while initial/refetch/loop errors retry catalog reads. Resource hooks own requests; table projections remain read-only.
+
+ProjectPage retains active-run discovery, subscriptions, command/idempotency state and snapshot-scoped selection above its local tabs. The existing snapshot query parameter selects a saved resource. Before exposing explicit snapshot metadata, the project-scoped saved-task read validates the project/run pair; an inaccessible response cannot fall back to another snapshot. Retryable transport failures may retain only previously validated content under the same user/project/snapshot key. Inaccessible, changed-session and malformed responses clear that context. Selected-refresh periods resolve through cancellable, cycle-checked owned base-job reads with a bounded lookup count independent of task volume.
+
+A report's ID and sourceSyncRunId must match the selected snapshot's current report pointer. Evidence reads use that report's saved registry, reset when the report changes, and never fetch external text. Result navigation resolves the produced report's actual sourceSyncRunId through its owned report read; inspecting an execution alone does not change the selected snapshot. Processing units and traces use lazy, user/run-scoped infinite queries with cancellation, deduplication and cursor-loop protection.
+
+Paginated sync history is distinct from the recent 20-execution preview. Public JobView does not expose run timestamps or captured subject identity; connection identity provides verified context, and ReviewView owns saved report provenance. Complete dated execution/report history remains unavailable through the current API. Persisted detail counts include retained records during selected refresh, not only new tracker reads; sync target counts are not review-subject counts. [UX](../design/UX.md#project-page-and-synchronization) defines their presentation and result navigation. Connectivity recovery follows the [SSE policy](sync-workflow.md#sse), independently of persisted job state.
 
 ## Server logging
 
@@ -270,7 +243,7 @@ Commands use the root npm workspaces and isolated integration infrastructure. La
 | --- | --- |
 | npm run docker:up | Complete local startup; migrate deploy before API/worker |
 | npm run docker:down | Stop without deleting volumes; volume deletion is a separate explicit action |
-| npm ci | Install from the lockfile after S01 |
+| npm ci | Install from the committed lockfile |
 | npm run infra:up / infra:down | Development/test Postgres, Redis, Mailpit |
 | npm run db:migrate | Apply committed migrations against backend/.env |
 | npm run db:migrate:dev | Develop migrations using the local development DB only |
@@ -281,4 +254,4 @@ Commands use the root npm workspaces and isolated integration infrastructure. La
 | npm run test:integration | Supertest + isolated real Postgres/Redis/BullMQ; SMTP and external model/provider boundaries are synthetic |
 | npm run build | Prisma generate in backend, contracts → backend (API/worker) → frontend |
 
-Choose Node Debian slim for Docker to avoid Alpine/native dependency complications. Prisma 7 uses the pg driver adapter; pin its package consistently with the Prisma CLI/client in S01. Vitest/SWC must preserve Nest decorator metadata; test transformation does not replace typechecking.
+Runtime and build compatibility constraints are defined in [D01](../decisions/D01-stack-and-local-runtime.md#compatibility-and-reproducibility).

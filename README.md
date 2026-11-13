@@ -24,7 +24,7 @@ Design and trade-offs: [architecture](docs/architecture/overview.md), [sync work
 
 ## Local startup
 
-Docker Engine/Desktop with Compose is required. Host development uses Node 24 LTS (at least 24.15, tested 24.16.0) and npm 11.13.0; the Docker image pins Node 24.22.2 and npm 11.13.0. Exact dependencies/images are pinned in manifests, the root lockfile, and Docker configuration; [D01](docs/decisions/D01-stack-and-local-runtime.md#compatibility-and-reproducibility) owns compatibility constraints.
+Docker Engine/Desktop with Compose is required. Host development requires Node 24 LTS (at least 24.15) and the npm version pinned in root package.json. Exact dependencies/images are pinned in manifests, the root lockfile, and Docker configuration; [D01](docs/decisions/D01-stack-and-local-runtime.md#compatibility-and-reproducibility) owns compatibility constraints, and [ROADMAP](ROADMAP.md#current-verification) records tested versions.
 
 Use a browser with Web Locks on localhost/HTTPS. Tokens stay in HttpOnly cookies; CSRF and query state remain in memory.
 
@@ -45,7 +45,7 @@ Open [localhost:3000](http://localhost:3000), create an account, open the email 
 
 If port 3000 is occupied, use `APP_PORT=3001 APP_ORIGIN=http://localhost:3001 npm run docker -- up --build`, then open [localhost:3001](http://localhost:3001). Cookies require a consistent hostname; use localhost throughout. Stop with `npm run docker:down` (volumes retained). Compose and the development infrastructure share Mailpit ports, so stop one before starting the other.
 
-For host/Vite development:
+For host/Vite development, set `DEV_API_PORT=3000` in `frontend/.env` to match the default backend `PORT`. The frontend example uses 3001 for the Docker/Vite flow below.
 
 ```bash
 npm ci
@@ -56,7 +56,7 @@ APP_ORIGIN=http://localhost:5173 SMTP_HOST=localhost npm run dev
 
 If the backend port is occupied, set `PORT=3002` in `backend/.env` and `DEV_API_PORT=3002` in `frontend/.env`; keep `APP_ORIGIN=http://localhost:5173` for the dev command. Shell environment overrides still take precedence.
 
-Open [localhost:5173](http://localhost:5173); Vite proxies `/api` to port 3000 without rewriting Origin. `DATABASE_URL` in `backend/.env` targets the loopback dev database. Test migration/test scripts always select a separate `self_review_test` DB, Redis DB 15, and `s01-test:` prefix. They never inherit user-data endpoints. `infra:down` stops without deleting volumes. A managed Linux executor may select its daemon with `SELF_REVIEW_DOCKER_HOST=unix:///var/run/docker.sock` for the Docker/infra scripts.
+Open [localhost:5173](http://localhost:5173); Vite proxies `/api` to `DEV_API_PORT` without rewriting Origin. `DATABASE_URL` in `backend/.env` targets the loopback dev database. Test migration/test scripts always select a separate `self_review_test` DB, Redis DB 15, and `s01-test:` prefix. They never inherit user-data endpoints. `infra:down` stops without deleting volumes. A managed Linux executor may select its daemon with `SELF_REVIEW_DOCKER_HOST=unix:///var/run/docker.sock` for the Docker/infra scripts.
 
 For API/worker in Docker with the Vite frontend, stop the root `npm run dev` process and the separate development infrastructure first. Set `DEV_API_PORT=3001` in `frontend/.env`, then run:
 
@@ -106,7 +106,7 @@ API and worker write Winston JSON logs. Read them with:
 npm run docker -- logs -f api worker
 ```
 
-Set `LOG_LEVEL=info` (default), `warn`, `error`, or `debug` in the server `backend/.env` and recreate API/worker to apply it. HTTP error logs share the response's `X-Request-Id`/`requestId`; worker/agent logs carry `runId`/`batchId`. An `evidence_validation_failed` event identifies the reason (for example `QUOTE_NOT_FOUND`) and includes the rejected claim/evidence, compared source excerpt, and comparison details. These server diagnostics contain task/result text with credential redaction. The public safe execution trace remains compact. Follow execution with `npm run docker -- logs -f worker`: `model_request_started/completed/failed`, `tool_started/completed/failed`, `validation_failed`, `output_correction_requested` and terminal events share run/batch/attempt identifiers. Request/output byte counts, durations, usage and schema issue paths identify the boundary that failed. The owner trace is checkpointed while work runs and survives interruption; full prompts/model output and hidden reasoning are excluded. Full behavior and boundaries: [server logging](docs/architecture/overview.md#server-logging).
+Set `LOG_LEVEL=info` (default), `warn`, `error`, or `debug` in `backend/.env` and recreate API/worker to apply it. Correlate HTTP errors by `X-Request-Id`/`requestId` and worker events by `runId`/`batchId`. Validation diagnostics can contain bounded task/result text with credential redaction; the persisted owner trace stays compact. Event fields, redaction and logging boundaries are defined in [server logging](docs/architecture/overview.md#server-logging).
 
 ## Verification
 

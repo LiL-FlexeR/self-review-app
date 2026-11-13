@@ -18,7 +18,7 @@ Confirmed default: `generateReview=false`, matching the initially unchecked UI o
 
 Sync and review are two stages of one user workflow, with separate persisted JobRun/usage. After a succeeded sync, a review child is created automatically only when generateReview=true; otherwise no automatic review is created. The worker does not wait for the child while holding a slot. One ReviewService serves the child and the manual button; all tasks are processed in batches according to [D06](D06-all-period-tasks-and-batches.md), without a task count limit. Neither a new general-purpose report-writing tool nor a second research agent is needed.
 
-JobRun uses trigger=manual by default and trigger=automatic for the automatic review. Both review paths reference their saved source through sourceSyncRunId, with no separate parent relation. A partial unique index permits at most one automatic continuation per source across all states while allowing manual regeneration. Trigger is set by backend code rather than a client-supplied field; the database rejects unsupported trigger values and automatic sync jobs.
+Automatic continuation is unique per source snapshot, while manual regeneration remains available. Server-owned trigger fields, source relations, and database constraints are defined in the [data model](../architecture/overview.md#data); atomic continuation and replay behavior are defined in the [sync workflow](../architecture/sync-workflow.md#automatic-review).
 
 ## Subject and scope
 

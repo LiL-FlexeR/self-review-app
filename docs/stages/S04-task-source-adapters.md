@@ -26,12 +26,6 @@ Exclude OAuth, Jira Data Center, the unscoped token/site-URL option, arbitrary H
 
 ## Verification
 
-```bash
-npm run check
-npm run test:unit
-npm run test:integration
-npm run build
-docker compose up --build
-```
+Follow the shared [verification and startup instructions](README.md#delivery-and-verification-rules), then perform the stage-specific checks below.
 
 For each provider, use a small test project/list: add a connection, view the catalog, synchronize, wait for SSE, open saved tasks, verify the API-confirmed token owner shown as the review subject, and generate a report for that owner without an assignee selector. Include at least one test with multiple ClickUp assignees. Record which real smoke tests were completed; do not label transport stubs as real connections. No access means an explicit blocker for the specific adapter.

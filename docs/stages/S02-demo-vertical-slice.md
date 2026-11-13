@@ -34,16 +34,6 @@ Exclude real trackers, a complex editor, and additional architectural layers.
 
 HTTP integration: signup/password → OTP from the test mail transport/Mailpit → session → fixture project → sync job → terminal SSE/GET → snapshots → review → validated JSON/Markdown. The worker and Postgres/Redis are real; only the model/external tracker are scripted. Do not replace the entire service with a prepared report.
 
-```bash
-npm run check
-npm run test:unit
-npm run test:integration
-npm run build
-docker compose up --build
-```
+Follow the shared [verification and startup instructions](README.md#delivery-and-verification-rules), then perform the stage-specific checks below.
 
 Run the full journey from the [example](../architecture/agent-workflow.md#example-run) offline, then repeat with APP_MODE=demo + OPENAI_API_KEY and the live model. Confirm access to the selected snapshot; if unavailable, record the blocker rather than presenting a scripted result as a live smoke test. Save a synthetic JSON/Markdown example and a safe trace.
-
-## Implementation checkpoint — 2026-11-12
-
-Current implementation, executed verification, and remaining acceptance checks are recorded in [ROADMAP](../../ROADMAP.md). Executed synthetic output and safe trace live in [examples](../examples/README.md). Do not treat offline/protocol tests as the required successful live-model or manual visual acceptance checks.
