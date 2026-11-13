@@ -24,6 +24,7 @@ import { AgentService } from '@app/modules/agent/services/agent.service';
 import { QueueService } from './queue.service.js';
 import { ReviewService } from './review.service.js';
 import type { JobRun, TaskSnapshot, CommentSnapshot, Prisma } from '@app/generated/prisma/client';
+import { Prisma as PrismaValues } from '@app/generated/prisma/client';
 import { AppLogger, withLogContext } from '@app/shared/logging/logger';
 
 const logger = new AppLogger('ProcessorService');
@@ -106,6 +107,7 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 				startedAt: new Date(),
 				heartbeatAt: new Date(),
 				unitDeadlineAt: new Date(Date.now() + LIMITS.unitMs),
+				error: PrismaValues.DbNull,
 				version: { increment: 1 },
 			},
 		});
@@ -135,6 +137,9 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 		const db = this.database.client;
 		const saved = await db.taskSnapshot.count({ where: { syncRunId: runId } });
 		const current = await db.jobRun.findUniqueOrThrow({ where: { id: runId } });
+		const incompleteComments = await db.taskSnapshot.count({
+			where: { syncRunId: runId, commentReadState: { in: ['failed', 'truncated'] } },
+		});
 		const attempts = await db.modelAttempt.findMany({ where: { runId } });
 		const code = this.getFailureCode(error);
 		const state =
@@ -146,6 +151,7 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 				state,
 				stage: 'finished',
 				finishedAt: new Date(),
+				importComplete: current.importComplete && incompleteComments === 0,
 				error: { code },
 				usage: json(aggregateUsage(this.configuration.get('APP_MODE'), attempts)),
 				coverage: json({
@@ -673,6 +679,7 @@ export class ProcessorService implements OnModuleInit, OnApplicationShutdown {
 					stage: 'finished',
 					finishedAt: new Date(),
 					analysisComplete: true,
+					importComplete: result.importComplete,
 					coverage: json({
 						...zod.record(zod.string(), zod.unknown()).parse(current.coverage),
 						discoveryComplete: result.discoveryComplete,

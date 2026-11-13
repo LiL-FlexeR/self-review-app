@@ -7,6 +7,46 @@ import { excerpt } from '@app/utils/excerpt';
 export class SourcesService {
 	constructor(@Inject(DatabaseService) private readonly database: DatabaseService) {}
 
+	async availability(ids: string[]) {
+		return this.database.client.taskSnapshot.findMany({
+			where: { id: { in: ids } },
+			select: {
+				externalId: true,
+				detailStatus: true,
+				refreshStatus: true,
+				commentReadState: true,
+				commentReadAt: true,
+				commentsTruncated: true,
+				commentErrorCode: true,
+			},
+		});
+	}
+
+	async limitations(syncRunId: string, subject?: string): Promise<string[]> {
+		const where = {
+			syncRunId,
+			...(subject ? { assignees: { array_contains: [subject] } } : {}),
+		};
+		const db = this.database.client;
+		const [unread, capped, failed] = await Promise.all([
+			db.taskSnapshot.count({ where: { ...where, commentReadState: 'not_read' } }),
+			db.taskSnapshot.count({ where: { ...where, commentsTruncated: true } }),
+			db.taskSnapshot.count({
+				where: { ...where, commentReadState: { in: ['failed', 'truncated'] } },
+			}),
+		]);
+		return [
+			...(unread ? [`Optional comments were not read for ${unread} task(s).`] : []),
+			...(capped
+				? [
+						`Comment results were capped for ${capped} task(s); additional comments were omitted.`,
+					]
+				: []),
+			...(failed ? [`Requested comment reads were incomplete for ${failed} task(s).`] : []),
+			'Model source excerpts are limited to 1 KiB; full saved text remains available.',
+		];
+	}
+
 	async forTasks(ids: string[]): Promise<TSource[]> {
 		const tasks = await this.database.client.taskSnapshot.findMany({
 			where: { id: { in: ids } },

@@ -190,7 +190,29 @@ export class ProjectsController {
 		let version = 0;
 		let ticks = 0;
 		let busy = false;
+		let closed = false;
+		const timers: {
+			poll?: ReturnType<typeof setInterval>;
+			expiry?: ReturnType<typeof setTimeout>;
+		} = {};
+		const cleanup = () => {
+			closed = true;
+			clearInterval(timers.poll);
+			clearTimeout(timers.expiry);
+		};
+		const close = () => {
+			cleanup();
+			res.end();
+		};
+		res.once('close', cleanup);
 		const emit = (state: typeof initial) => {
+			if (closed) {
+				return;
+			}
+			if (Date.now() >= identity.exp * 1000) {
+				close();
+				return;
+			}
 			if (state.version > version) {
 				version = state.version;
 				res.write(`id: ${runId}/${version}\ndata: ${JSON.stringify(state)}\n\n`);
@@ -198,37 +220,43 @@ export class ProjectsController {
 		};
 		emit(initial);
 		if (!['queued', 'running'].includes(initial.state)) {
-			res.end();
+			close();
+			return;
+		}
+		if (closed) {
 			return;
 		}
 		const poll = async () => {
-			if (busy) {
+			if (busy || closed) {
 				return;
 			}
 			busy = true;
 			try {
 				const run = await this.jobs.owned(identity.sub, runId);
 				const state = await this.jobs.view(run);
+				// A pending database read can outlive the connection or its original JWT.
+				if (closed) {
+					return;
+				}
 				emit(state);
+				if (closed) {
+					return;
+				}
 				if (!['queued', 'running'].includes(state.state)) {
-					res.end();
+					close();
 				} else if (++ticks % 15 === 0) {
 					res.write(': heartbeat\n\n');
 				}
 			} catch (error) {
 				logger.warn('sse_poll_failed', { error, runId });
-				res.end();
+				close();
 			} finally {
 				busy = false;
 			}
 		};
-		const timer = setInterval(() => {
+		timers.poll = setInterval(() => {
 			void poll();
 		}, 1000);
-		const expiry = setTimeout(() => res.end(), Math.max(0, identity.exp * 1000 - Date.now()));
-		res.on('close', () => {
-			clearInterval(timer);
-			clearTimeout(expiry);
-		});
+		timers.expiry = setTimeout(close, Math.max(0, identity.exp * 1000 - Date.now()));
 	}
 }

@@ -26,7 +26,7 @@ Strict Zod/JSON schemas, additionalProperties=false. Code supplies context {owne
 | get_issue_details | {issueIds:string[]} | Every current-batch ID without duplicates; saved descriptions/metadata, Sources, freshness, and missing/truncated IDs |
 | get_issue_comments | {issueId:string} | Comments for a current-batch task; period permits API reads, while tasks mode permits external reads only for refresh IDs and copied comments for others |
 
-For copied tasks, get_issue_comments reads only copied CommentSnapshot data. It distinguishes comments not read in the base from a successful read with no comments; neither condition authorizes a new provider request. Source references resolve to the new snapshot even when content and retrievedAt were copied. A failed permitted read is reported separately from these expected availability limits.
+For copied tasks, get_issue_comments reads only copied CommentSnapshot data. It distinguishes comments not read in the base from a successful read with no comments; neither condition authorizes a new provider request. Source references resolve to the new snapshot even when content and retrievedAt were copied. A failed permitted read is reported separately from these expected availability limits. Details and saved-review inputs include per-task detail/freshness and comment-read metadata; comment tool results report the persisted read state, read time, cap flag, and safe failure code, including for copied records.
 
 Code handles source pagination and complete import before the AI stage. In each nonempty batch, the model actually uses list/details to investigate different levels of saved data, then decides which comments are needed. Code saves comments and analysis results. The model has no unrestricted SQL/write/HTTP tool. Bounded provider-read concurrency does not imply multiple agents.
 
@@ -87,7 +87,7 @@ Code adds envelope fields: runId, scope/period, sourceSyncRunId for review, retr
 - Code computes coverage from the manifest, selected/read/saved/missing IDs, analysis batch IDs/states, and truncations. Do not accept discoveryComplete/importComplete/analysisComplete from the model. Reduction inherits the union of child coverage, not the count of surviving claims.
 - The UI renders text safely without raw HTML. The renderer escapes model text/quotations and creates active links only from the registry.
 
-Code adds mandatory qualifications about the createdAt period, current snapshots, and unconfirmed individual contribution independently of the model. Quotation validation does not guarantee source truth or valid inference. There is no separate LLM judge in the MVP.
+Code adds mandatory qualifications about the createdAt period, current snapshots, and unconfirmed individual contribution independently of the model. It also derives unread/capped/incomplete comment limitations from saved task metadata and identifies the bounded model excerpts; expected omissions do not change technical completeness. Quotation validation does not guarantee source truth or valid inference. There is no separate LLM judge in the MVP.
 
 ## Prompt injection and boundaries
 

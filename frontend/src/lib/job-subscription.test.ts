@@ -104,3 +104,60 @@ it('ignores late responses and queued reconnects after account change/unmount', 
 	expect(onState).not.toHaveBeenCalled();
 	expect(connect).not.toHaveBeenCalled();
 });
+
+it('ignores stream callbacks and queued recovery after terminal progress', async () => {
+	vi.useFakeTimers();
+	let callbacks!: Parameters<ConstructorParameters<typeof JobSubscription>[0]['connect']>[0];
+	const read = vi.fn(async () => state);
+	const connect = vi.fn((listeners: typeof callbacks) => {
+		callbacks = listeners;
+		return vi.fn();
+	});
+	const onStatus = vi.fn();
+	const subscription = new JobSubscription({
+		runId: state.runId,
+		read,
+		connect,
+		onState: vi.fn(),
+		onStatus,
+	});
+	await subscription.start();
+	callbacks.message(JSON.stringify({ ...state, version: 2, state: 'succeeded' }));
+	callbacks.error();
+	callbacks.open();
+	await vi.advanceTimersByTimeAsync(10000);
+	await subscription.start();
+	expect(read).toHaveBeenCalledTimes(1);
+	expect(connect).toHaveBeenCalledTimes(1);
+	expect(onStatus).toHaveBeenLastCalledWith('succeeded · reading');
+});
+
+it('keeps one reconnect path and ignores callbacks from a replaced stream', async () => {
+	vi.useFakeTimers();
+	const listeners: Parameters<ConstructorParameters<typeof JobSubscription>[0]['connect']>[0][] =
+		[];
+	const read = vi.fn(async () => state);
+	const onState = vi.fn();
+	const subscription = new JobSubscription({
+		runId: state.runId,
+		read,
+		onState,
+		onStatus: vi.fn(),
+		connect: (callbacks) => {
+			listeners.push(callbacks);
+			return vi.fn();
+		},
+	});
+	await subscription.start();
+	listeners[0]!.error();
+	listeners[0]!.error();
+	await vi.advanceTimersByTimeAsync(1000);
+	expect(listeners).toHaveLength(2);
+	listeners[0]!.message(JSON.stringify({ ...state, version: 99, state: 'failed' }));
+	listeners[0]!.error();
+	listeners[1]!.message(JSON.stringify({ ...state, version: 2 }));
+	await vi.advanceTimersByTimeAsync(10000);
+	expect(read).toHaveBeenCalledTimes(2);
+	expect(onState).toHaveBeenLastCalledWith(expect.objectContaining({ version: 2 }));
+	subscription.stop();
+});

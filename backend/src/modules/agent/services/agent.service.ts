@@ -66,7 +66,15 @@ export class AgentService {
 			where: { id: finalBatchId },
 		});
 
-		return report ? ReportDraft.parse(final.output) : Analysis.parse(final.output);
+		if (report) {
+			return ReportDraft.parse(final.output);
+		}
+		const output = Analysis.parse(final.output);
+		const limitations = await this.sources.limitations(sourceRunId);
+		return Analysis.parse({
+			...output,
+			limitations: [...output.limitations.slice(0, 8 - limitations.length), ...limitations],
+		});
 	}
 
 	private async analyzeTaskBatches(
@@ -265,10 +273,12 @@ export class AgentService {
 				runId: batch.runId,
 				batchId: batch.id,
 			});
-			await db.analysisBatch.update({
-				where: { id: batch.id },
-				data: { state: 'failed' },
-			});
+			await inRunningRun(db, batch.runId, (transaction) =>
+				transaction.analysisBatch.update({
+					where: { id: batch.id },
+					data: { state: 'failed' },
+				}),
+			);
 			throw error;
 		}
 	}
@@ -371,6 +381,9 @@ export class AgentService {
 			},
 		});
 		const sources = await this.loadUnitSources(options);
+		const availability = options.childClaims
+			? []
+			: await this.sources.availability(options.taskIds);
 		const exposed = new Map<string, TSource>();
 		if (!options.research) {
 			sources.forEach((source) => exposed.set(source.id, source));
@@ -396,6 +409,7 @@ export class AgentService {
 					content: JSON.stringify({
 						allowedIssueIds: options.allowedIds,
 						sources: options.research || options.childClaims ? [] : sources,
+						availability: options.research ? [] : availability,
 						...(options.childClaims
 							? reductionInput(options.childClaims, sources)
 							: { childClaims: null }),
@@ -464,28 +478,27 @@ export class AgentService {
 			logger.error('operation_rejected', { reason: 'BUDGET_EXHAUSTED' });
 			throw new Error('BUDGET_EXHAUSTED');
 		}
-		const db = this.database.client;
-		const active = await db.jobRun.findUniqueOrThrow({
-			where: { id: context.runId },
-			select: { state: true },
-		});
-		if (active.state !== 'running') {
-			logger.error('operation_rejected', { reason: 'RUN_INTERRUPTED' });
-			throw new Error('RUN_INTERRUPTED');
-		}
-		const attemptNo = (await db.modelAttempt.count({ where: { runId: context.runId } })) + 1;
-		const attempt = await db.modelAttempt.create({
-			data: {
-				runId: context.runId,
-				batchId: context.batchId,
-				attemptNo,
-				status: 'submitted',
+		// Serialize reservation with recovery so terminal work cannot reserve a paid request.
+		const attempt = await inRunningRun(
+			this.database.client,
+			context.runId,
+			async (transaction) => {
+				const attemptNo =
+					(await transaction.modelAttempt.count({ where: { runId: context.runId } })) + 1;
+				return transaction.modelAttempt.create({
+					data: {
+						runId: context.runId,
+						batchId: context.batchId,
+						attemptNo,
+						status: 'submitted',
+					},
+				});
 			},
-		});
-		context.attemptNo = attemptNo;
+		);
+		context.attemptNo = attempt.attemptNo;
 		context.unitAttempt++;
 		await this.event(context, 'model_started', {
-			attempt: attemptNo,
+			attempt: attempt.attemptNo,
 			sourceCount: context.exposed.size,
 			historyItems: context.history.length,
 		});
@@ -516,15 +529,17 @@ export class AgentService {
 				}),
 		);
 		context.transportRetried = false;
-		await this.database.client.modelAttempt.update({
-			where: { id: attempt.id },
-			data: {
-				status: 'completed',
-				providerResponseId: response.responseId,
-				usage: response.usage ? json(response.usage) : undefined,
-				usageUnknown: !response.usage,
-			},
-		});
+		await inRunningRun(this.database.client, context.runId, (transaction) =>
+			transaction.modelAttempt.update({
+				where: { id: attempt.id },
+				data: {
+					status: 'completed',
+					providerResponseId: response.responseId,
+					usage: response.usage ? json(response.usage) : undefined,
+					usageUnknown: !response.usage,
+				},
+			}),
+		);
 		context.usageTokens += response.usage
 			? response.usage.inputTokens + response.usage.outputTokens
 			: 0;
@@ -540,6 +555,9 @@ export class AgentService {
 			cachedInputTokens: response.usage?.cachedInputTokens,
 			reasoningTokens: response.usage?.reasoningTokens,
 		});
+		if (Date.now() >= context.deadline) {
+			throw new Error('UNIT_TIMEOUT');
+		}
 
 		return response;
 	}
@@ -623,8 +641,9 @@ export class AgentService {
 				durationMs: Date.now() - startedAt,
 			});
 			if (
-				error instanceof Error &&
-				['PROVIDER_READ_FAILED', 'RUN_INTERRUPTED'].includes(error.message)
+				error instanceof ProviderError ||
+				(error instanceof Error &&
+					['PROVIDER_READ_FAILED', 'RUN_INTERRUPTED'].includes(error.message))
 			) {
 				throw error;
 			}
@@ -697,7 +716,10 @@ export class AgentService {
 			throw new Error('GUARDRAIL_VIOLATION');
 		}
 
-		return { sources: await this.sources.forTasks(context.taskIds) };
+		return {
+			sources: await this.sources.forTasks(context.taskIds),
+			availability: await this.sources.availability(context.taskIds),
+		};
 	}
 
 	private async getIssueComments(context: IUnitContext, args: unknown) {
@@ -706,7 +728,7 @@ export class AgentService {
 			logger.error('operation_rejected', { reason: 'GUARDRAIL_VIOLATION' });
 			throw new Error('GUARDRAIL_VIOLATION');
 		}
-		const task = await this.database.client.taskSnapshot.findFirstOrThrow({
+		let task = await this.database.client.taskSnapshot.findFirstOrThrow({
 			where: { id: { in: context.taskIds }, externalId: issueId },
 		});
 		const cacheHit = context.commentMemo.has(issueId) || task.commentReadState !== 'not_read';
@@ -716,6 +738,9 @@ export class AgentService {
 				result = { availability: 'comment_budget_exhausted' };
 			} else {
 				await this.refreshTaskComments(context.runId, task);
+				task = await this.database.client.taskSnapshot.findUniqueOrThrow({
+					where: { id: task.id },
+				});
 			}
 		}
 		context.commentMemo.add(issueId);
@@ -727,7 +752,10 @@ export class AgentService {
 			availability:
 				task.copiedFromSnapshotId && task.commentReadState === 'not_read'
 					? 'not_read_in_base'
-					: 'read',
+					: task.commentReadState,
+			commentsTruncated: task.commentsTruncated,
+			commentReadAt: task.commentReadAt?.toISOString() ?? null,
+			commentErrorCode: task.commentErrorCode,
 		};
 		context.trace.push({
 			event: 'tool_comments',
@@ -779,9 +807,11 @@ export class AgentService {
 			await transaction.taskSnapshot.update({
 				where: { id: task.id },
 				data: {
-					commentReadState: comments.some(
-						(comment) => Buffer.byteLength(comment.body) > LIMITS.sourceFieldBytes,
-					)
+					commentReadState: comments
+						.slice(0, LIMITS.commentsPerTask)
+						.some(
+							(comment) => Buffer.byteLength(comment.body) > LIMITS.sourceFieldBytes,
+						)
 						? 'truncated'
 						: 'read',
 					commentReadAt: new Date(),
@@ -794,9 +824,11 @@ export class AgentService {
 	private encodeToolResult(context: IUnitContext, result: unknown): string {
 		if (typeof result === 'object' && result !== null && 'sources' in result) {
 			const toolSources = zod.array(Source).parse(result.sources);
+			const envelopeBytes =
+				Buffer.byteLength(JSON.stringify({ ...result, sources: [] })) + 512;
 			const bounded = boundSources(
 				toolSources,
-				Math.max(0, LIMITS.dataBytes - context.dataBytes - 512),
+				Math.max(0, LIMITS.dataBytes - context.dataBytes - envelopeBytes),
 			);
 			result = { ...result, ...bounded };
 			bounded.sources.forEach((source) => {
@@ -911,13 +943,15 @@ export class AgentService {
 			errorCode: 'MODEL_REQUEST_OR_VALIDATION_FAILED',
 			error: safeError(error),
 		});
-		await this.database.client.modelAttempt.updateMany({
-			where: { id: attempt.id, status: 'submitted' },
-			data: { status: 'failed' },
-		});
-		await this.database.client.analysisBatch.update({
-			where: { id: context.batchId },
-			data: { trace: json(context.trace.slice(0, 100)) },
+		await inRunningRun(this.database.client, context.runId, async (transaction) => {
+			await transaction.modelAttempt.updateMany({
+				where: { id: attempt.id, status: 'submitted' },
+				data: { status: 'failed' },
+			});
+			await transaction.analysisBatch.update({
+				where: { id: context.batchId },
+				data: { trace: json(context.trace.slice(0, 100)) },
+			});
 		});
 	}
 

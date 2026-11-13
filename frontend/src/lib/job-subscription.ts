@@ -18,6 +18,7 @@ export class JobSubscription {
 	private stopped = false;
 	private version = 0;
 	private retries = 0;
+	private generation = 0;
 	private closeStream?: () => void;
 	private timer?: ReturnType<typeof setTimeout>;
 	constructor(private readonly options: ISubscriptionOptions) {}
@@ -39,7 +40,7 @@ export class JobSubscription {
 		this.options.onState(state);
 		this.options.onStatus(`${state.state} · ${state.stage}`);
 		if (!['queued', 'running'].includes(state.state)) {
-			this.closeStream?.();
+			this.stop();
 		}
 	}
 
@@ -47,9 +48,14 @@ export class JobSubscription {
 		if (this.stopped) {
 			return;
 		}
+		clearTimeout(this.timer);
+		this.timer = undefined;
+		this.closeStream?.();
+		const generation = ++this.generation;
+		const isCurrent = () => !this.stopped && generation === this.generation;
 		try {
 			const state = JobView.parse(await this.options.read());
-			if (this.stopped) {
+			if (!isCurrent()) {
 				return;
 			}
 			this.accept(state);
@@ -58,15 +64,19 @@ export class JobSubscription {
 			}
 			this.closeStream = this.options.connect({
 				open: () => {
-					if (!this.stopped) {
+					if (isCurrent()) {
 						this.retries = 0;
 						this.options.onStatus('Connected; background work continues.');
 					}
 				},
 				message: (data) => {
+					if (!isCurrent()) {
+						return;
+					}
 					try {
 						this.accept(JobView.parse(JSON.parse(data)));
 					} catch {
+						this.generation++;
 						this.closeStream?.();
 						this.options.onStatus(
 							'Invalid progress response. Reconnect to check saved state.',
@@ -74,16 +84,21 @@ export class JobSubscription {
 					}
 				},
 				error: () => {
+					if (!isCurrent()) {
+						return;
+					}
+					this.generation++;
 					this.closeStream?.();
 					this.schedule();
 				},
 			});
 		} catch (error) {
-			if (this.stopped) {
+			if (!isCurrent()) {
 				return;
 			}
 			if (error instanceof ClientError && [401, 403, 404].includes(error.status)) {
 				this.options.onStatus(error.message);
+				this.stop();
 				return;
 			}
 			this.schedule();
@@ -91,7 +106,7 @@ export class JobSubscription {
 	}
 
 	private schedule() {
-		if (this.stopped) {
+		if (this.stopped || this.timer) {
 			return;
 		}
 		if (this.retries >= 3) {
@@ -101,6 +116,7 @@ export class JobSubscription {
 		this.options.onStatus('Reconnecting; background work continues…');
 		this.timer = setTimeout(
 			() => {
+				this.timer = undefined;
 				void this.start();
 			},
 			1000 * 2 ** this.retries++,

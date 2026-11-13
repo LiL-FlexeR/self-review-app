@@ -5,6 +5,8 @@ import { ConfigService } from '@app/shared/config/config.service';
 import { DatabaseService } from '@app/shared/database/database.service';
 import { AppLogger } from '@app/shared/logging/logger';
 import { json } from '@app/utils/json';
+import { aggregateUsage } from '@app/modules/agent/utils/usage';
+import { z as zod } from 'zod';
 
 const logger = new AppLogger('QueueService');
 
@@ -13,7 +15,7 @@ export class QueueService implements OnModuleInit, OnApplicationShutdown {
 	readonly queue: Queue;
 	private timer?: ReturnType<typeof setInterval>;
 	constructor(
-		@Inject(ConfigService) configuration: ConfigService,
+		@Inject(ConfigService) private readonly configuration: ConfigService,
 		@Inject(DatabaseService) private readonly database: DatabaseService,
 	) {
 		this.queue = new Queue('workflow', {
@@ -57,8 +59,34 @@ export class QueueService implements OnModuleInit, OnApplicationShutdown {
 			select: { id: true, type: true },
 		});
 		for (const run of interrupted) {
-			const saved = await db.taskSnapshot.count({ where: { syncRunId: run.id } });
 			const recovered = await db.$transaction(async (transaction) => {
+				// The run lock also fences late source/model writes using inRunningRun.
+				const rows = await transaction.$queryRaw<
+					{
+						unit_deadline_at: Date | null;
+						coverage: unknown;
+						generate_review: boolean;
+						import_complete: boolean;
+					}[]
+				>`SELECT unit_deadline_at, coverage, generate_review, import_complete FROM job_runs WHERE id=${run.id}::uuid FOR UPDATE`;
+				const current = rows[0];
+				const code =
+					current?.unit_deadline_at && current.unit_deadline_at < new Date()
+						? 'UNIT_TIMEOUT'
+						: 'RUN_INTERRUPTED';
+				const saved = await transaction.taskSnapshot.count({
+					where: { syncRunId: run.id },
+				});
+				const incompleteReads = await transaction.taskSnapshot.count({
+					where: {
+						syncRunId: run.id,
+						OR: [
+							{ detailStatus: { in: ['pending', 'unavailable', 'truncated'] } },
+							{ refreshStatus: 'stale' },
+							{ commentReadState: { in: ['failed', 'truncated'] } },
+						],
+					},
+				});
 				const changed = await transaction.jobRun.updateMany({
 					where: {
 						id: run.id,
@@ -72,7 +100,17 @@ export class QueueService implements OnModuleInit, OnApplicationShutdown {
 						state: run.type === 'sync' && saved ? 'partial' : 'failed',
 						stage: 'finished',
 						finishedAt: new Date(),
-						error: { code: 'RUN_INTERRUPTED' },
+						error: { code },
+						analysisComplete: false,
+						importComplete: Boolean(current?.import_complete) && incompleteReads === 0,
+						coverage: json({
+							...zod
+								.record(zod.string(), zod.unknown())
+								.parse(current?.coverage ?? {}),
+							...(current?.generate_review
+								? { autoReview: 'skipped: sync interrupted' }
+								: {}),
+						}),
 						version: { increment: 1 },
 					},
 				});
@@ -82,6 +120,15 @@ export class QueueService implements OnModuleInit, OnApplicationShutdown {
 				await transaction.modelAttempt.updateMany({
 					where: { runId: run.id, status: 'submitted' },
 					data: { status: 'interrupted', usageUnknown: true },
+				});
+				const attempts = await transaction.modelAttempt.findMany({
+					where: { runId: run.id },
+				});
+				await transaction.jobRun.update({
+					where: { id: run.id },
+					data: {
+						usage: json(aggregateUsage(this.configuration.get('APP_MODE'), attempts)),
+					},
 				});
 				const batches = await transaction.analysisBatch.findMany({
 					where: { runId: run.id, state: { in: ['pending', 'running'] } },
@@ -97,19 +144,19 @@ export class QueueService implements OnModuleInit, OnApplicationShutdown {
 								{
 									event: 'unit_interrupted',
 									timestamp: new Date().toISOString(),
-									errorCode: 'RUN_INTERRUPTED',
+									errorCode: code,
 								},
 							]),
 						},
 					});
 				}
-				return true;
+				return { code, state: run.type === 'sync' && saved ? 'partial' : 'failed' };
 			});
 			if (recovered) {
 				logger.warn('run_interrupted', {
 					runId: run.id,
-					reason: 'RUN_INTERRUPTED',
-					state: run.type === 'sync' && saved ? 'partial' : 'failed',
+					reason: recovered.code,
+					state: recovered.state,
 				});
 			}
 		}

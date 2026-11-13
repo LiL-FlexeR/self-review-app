@@ -1,7 +1,7 @@
 {
-	"id": "1fcfd7ed-da6c-4573-8e09-b46c4a182bde",
-	"reviewRunId": "f5b5b005-37fc-4fe8-b662-2ec1d27ea775",
-	"sourceSyncRunId": "375f942d-c6eb-49ca-b661-949d15dea9ae",
+	"id": "7b56f93e-e787-423e-a496-4da41845484e",
+	"reviewRunId": "2efb2c5d-98ed-448b-97e4-31e5709275cc",
+	"sourceSyncRunId": "2c6e32b4-48c5-4b5f-8ba4-797549a6f8af",
 	"subjectSourceUserId": "demo-anna",
 	"draft": {
 		"schemaVersion": "1.0",
@@ -14,7 +14,7 @@
 						"text": "The saved description states: Add an index to speed up the API.",
 						"evidence": [
 							{
-								"sourceId": "sync:375f942d-c6eb-49ca-b661-949d15dea9ae:issue:DEMO-101:description",
+								"sourceId": "sync:2c6e32b4-48c5-4b5f-8ba4-797549a6f8af:issue:DEMO-101:description",
 								"quote": "Add an index to speed up the API."
 							}
 						]
@@ -24,7 +24,7 @@
 						"text": "The saved comment states: After adding the index, p95 decreased from 1200 to 900 ms on staging, based on 1000 requests. Production rollout is not confirmed.",
 						"evidence": [
 							{
-								"sourceId": "sync:375f942d-c6eb-49ca-b661-949d15dea9ae:comment:2b796d95-4c18-49dc-a31f-99b127b705fa",
+								"sourceId": "sync:2c6e32b4-48c5-4b5f-8ba4-797549a6f8af:comment:b5d8b4a2-8afb-43da-b430-b69d96bcdbdc",
 								"quote": "After adding the index, p95 decreased from 1200 to 900 ms on staging, based on 1000 requests. Production rollout is not confirmed."
 							}
 						]
@@ -34,7 +34,7 @@
 						"text": "The saved description states: Add retries for transient errors",
 						"evidence": [
 							{
-								"sourceId": "sync:375f942d-c6eb-49ca-b661-949d15dea9ae:issue:DEMO-102:description",
+								"sourceId": "sync:2c6e32b4-48c5-4b5f-8ba4-797549a6f8af:issue:DEMO-102:description",
 								"quote": "Add retries for transient errors"
 							}
 						]
@@ -44,7 +44,7 @@
 						"text": "The saved description states: Plan the next reliability experiment.",
 						"evidence": [
 							{
-								"sourceId": "sync:375f942d-c6eb-49ca-b661-949d15dea9ae:issue:DEMO-110:description",
+								"sourceId": "sync:2c6e32b4-48c5-4b5f-8ba4-797549a6f8af:issue:DEMO-110:description",
 								"quote": "Plan the next reliability experiment."
 							}
 						]
@@ -54,58 +54,60 @@
 		],
 		"limitations": [
 			"Synthetic scripted model output; individual contribution and production rollout are not confirmed.",
+			"Optional comments were not read for 4 task(s).",
+			"Model source excerpts are limited to 1 KiB; full saved text remains available.",
 			"Selection uses task creation dates in UTC and current source snapshots; outcome timing may differ.",
 			"Assignment does not confirm individual contribution or production rollout."
 		],
 		"explanation": "Evidence comes from saved excerpts; offline output does not verify model judgment."
 	},
-	"markdown": "# Self-review draft\n\n## Saved work\n\n- The saved description states: Add an index to speed up the API. (task_description)\n  > Add an index to speed up the API.\n  Source: sync:375f942d-c6eb-49ca-b661-949d15dea9ae:issue:DEMO-101:description\n\n- The saved comment states: After adding the index, p95 decreased from 1200 to 900 ms on staging, based on 1000 requests. Production rollout is not confirmed. (reported_measurement)\n  > After adding the index, p95 decreased from 1200 to 900 ms on staging, based on 1000 requests. Production rollout is not confirmed.\n  Source: sync:375f942d-c6eb-49ca-b661-949d15dea9ae:comment:2b796d95-4c18-49dc-a31f-99b127b705fa\n\n- The saved description states: Add retries for transient errors (task_description)\n  > Add retries for transient errors\n  Source: sync:375f942d-c6eb-49ca-b661-949d15dea9ae:issue:DEMO-102:description\n\n- The saved description states: Plan the next reliability experiment. (task_description)\n  > Plan the next reliability experiment.\n  Source: sync:375f942d-c6eb-49ca-b661-949d15dea9ae:issue:DEMO-110:description\n\n## Limitations\n\n- Synthetic scripted model output; individual contribution and production rollout are not confirmed.\n\n- Selection uses task creation dates in UTC and current source snapshots; outcome timing may differ.\n\n- Assignment does not confirm individual contribution or production rollout.\n\nEvidence comes from saved excerpts; offline output does not verify model judgment.\n\nSaved source references: 4",
+	"markdown": "# Self-review draft\n\n## Saved work\n\n- The saved description states: Add an index to speed up the API. (task_description)\n  > Add an index to speed up the API.\n  Source: sync:2c6e32b4-48c5-4b5f-8ba4-797549a6f8af:issue:DEMO-101:description\n\n- The saved comment states: After adding the index, p95 decreased from 1200 to 900 ms on staging, based on 1000 requests. Production rollout is not confirmed. (reported_measurement)\n  > After adding the index, p95 decreased from 1200 to 900 ms on staging, based on 1000 requests. Production rollout is not confirmed.\n  Source: sync:2c6e32b4-48c5-4b5f-8ba4-797549a6f8af:comment:b5d8b4a2-8afb-43da-b430-b69d96bcdbdc\n\n- The saved description states: Add retries for transient errors (task_description)\n  > Add retries for transient errors\n  Source: sync:2c6e32b4-48c5-4b5f-8ba4-797549a6f8af:issue:DEMO-102:description\n\n- The saved description states: Plan the next reliability experiment. (task_description)\n  > Plan the next reliability experiment.\n  Source: sync:2c6e32b4-48c5-4b5f-8ba4-797549a6f8af:issue:DEMO-110:description\n\n## Limitations\n\n- Synthetic scripted model output; individual contribution and production rollout are not confirmed.\n\n- Optional comments were not read for 4 task\\(s\\).\n\n- Model source excerpts are limited to 1 KiB; full saved text remains available.\n\n- Selection uses task creation dates in UTC and current source snapshots; outcome timing may differ.\n\n- Assignment does not confirm individual contribution or production rollout.\n\nEvidence comes from saved excerpts; offline output does not verify model judgment.\n\nSaved source references: 4",
 	"sources": [
 		{
-			"id": "sync:375f942d-c6eb-49ca-b661-949d15dea9ae:issue:DEMO-101:description",
-			"taskSnapshotId": "a4754833-3e9d-4931-a0aa-e4275fa79c1c",
+			"id": "sync:2c6e32b4-48c5-4b5f-8ba4-797549a6f8af:issue:DEMO-101:description",
+			"taskSnapshotId": "7a2fa189-0ad4-4f32-b2ca-3294cf94549d",
 			"kind": "description",
 			"textExcerpt": "Add an index to speed up the API.",
 			"url": null,
 			"createdAt": "2026-10-05T10:00:00.000Z",
 			"updatedAt": null,
-			"retrievedAt": "2026-11-12T23:38:31.794Z",
+			"retrievedAt": "2026-11-13T03:29:38.836Z",
 			"truncated": false,
 			"state": "completed"
 		},
 		{
-			"id": "sync:375f942d-c6eb-49ca-b661-949d15dea9ae:comment:2b796d95-4c18-49dc-a31f-99b127b705fa",
-			"taskSnapshotId": "a4754833-3e9d-4931-a0aa-e4275fa79c1c",
+			"id": "sync:2c6e32b4-48c5-4b5f-8ba4-797549a6f8af:comment:b5d8b4a2-8afb-43da-b430-b69d96bcdbdc",
+			"taskSnapshotId": "7a2fa189-0ad4-4f32-b2ca-3294cf94549d",
 			"kind": "comment",
 			"textExcerpt": "After adding the index, p95 decreased from 1200 to 900 ms on staging, based on 1000 requests. Production rollout is not confirmed.",
 			"url": null,
 			"createdAt": "2026-10-09T12:00:00.000Z",
 			"updatedAt": null,
-			"retrievedAt": "2026-11-12T23:38:31.946Z",
+			"retrievedAt": "2026-11-13T03:29:39.017Z",
 			"truncated": false,
 			"state": "completed"
 		},
 		{
-			"id": "sync:375f942d-c6eb-49ca-b661-949d15dea9ae:issue:DEMO-102:description",
-			"taskSnapshotId": "9e4b3362-4a91-4de7-ac47-5f2393376a59",
+			"id": "sync:2c6e32b4-48c5-4b5f-8ba4-797549a6f8af:issue:DEMO-102:description",
+			"taskSnapshotId": "a08653a8-cd67-42e8-9867-b6b392292e6b",
 			"kind": "description",
 			"textExcerpt": "Add retries for transient errors",
 			"url": null,
 			"createdAt": "2026-10-10T10:00:00.000Z",
 			"updatedAt": null,
-			"retrievedAt": "2026-11-12T23:38:31.789Z",
+			"retrievedAt": "2026-11-13T03:29:38.844Z",
 			"truncated": false,
 			"state": "started"
 		},
 		{
-			"id": "sync:375f942d-c6eb-49ca-b661-949d15dea9ae:issue:DEMO-110:description",
-			"taskSnapshotId": "a43b0d12-1e01-492d-ab57-0741f781115d",
+			"id": "sync:2c6e32b4-48c5-4b5f-8ba4-797549a6f8af:issue:DEMO-110:description",
+			"taskSnapshotId": "af20c26d-ea6c-4bf3-a8c6-ed3e1dbf6a71",
 			"kind": "description",
 			"textExcerpt": "Plan the next reliability experiment.",
 			"url": null,
 			"createdAt": "2026-10-01T00:00:00.000Z",
 			"updatedAt": null,
-			"retrievedAt": "2026-11-12T23:38:31.792Z",
+			"retrievedAt": "2026-11-13T03:29:38.848Z",
 			"truncated": false,
 			"state": "backlog"
 		}
@@ -132,6 +134,6 @@
 		"analysisComplete": true,
 		"targetTasks": 5
 	},
-	"createdAt": "2026-11-12T23:38:32.088Z",
-	"traceUrl": "/api/jobs/f5b5b005-37fc-4fe8-b662-2ec1d27ea775/trace"
+	"createdAt": "2026-11-13T03:29:39.229Z",
+	"traceUrl": "/api/jobs/2efb2c5d-98ed-448b-97e4-31e5709275cc/trace"
 }

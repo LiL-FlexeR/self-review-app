@@ -28,16 +28,24 @@ export class ReviewService {
 		const analysis = ReportDraft.parse(
 			await this.agent.run(run.id, source.id, true, run.subjectSourceUserId),
 		);
+		const limitations = await this.sources.limitations(source.id, run.subjectSourceUserId);
+		const qualifications = [
+			'Selection uses task creation dates in UTC and current source snapshots; outcome timing may differ.',
+			'Assignment does not confirm individual contribution or production rollout.',
+			...(source.state === 'partial'
+				? ['Incomplete source snapshot explicitly accepted.']
+				: []),
+		];
 		const draft = ReportDraft.parse({
 			schemaVersion: '1.0',
 			groups: analysis.groups,
 			limitations: [
-				...analysis.limitations.slice(0, 4),
-				'Selection uses task creation dates in UTC and current source snapshots; outcome timing may differ.',
-				'Assignment does not confirm individual contribution or production rollout.',
-				...(source.state === 'partial'
-					? ['Incomplete source snapshot explicitly accepted.']
-					: []),
+				...analysis.limitations.slice(
+					0,
+					Math.min(4, 8 - limitations.length - qualifications.length),
+				),
+				...limitations,
+				...qualifications,
 			],
 			explanation: analysis.explanation,
 		});

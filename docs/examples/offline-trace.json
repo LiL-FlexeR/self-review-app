@@ -1,14 +1,14 @@
 {
 	"items": [
 		{
-			"batchId": "0e790ce4-78b0-46d4-a7cc-e5d7858db53e",
+			"batchId": "6af20131-bb76-45da-9358-193d2f805030",
 			"level": 0,
 			"events": [
 				{
 					"event": "unit_started",
 					"phase": "sync",
 					"taskCount": 6,
-					"timestamp": "2026-11-12T23:38:31.821Z",
+					"timestamp": "2026-11-13T03:29:38.883Z",
 					"batchLevel": 0,
 					"claimCount": 0,
 					"sourceCount": 0,
@@ -17,7 +17,7 @@
 				{
 					"event": "model_started",
 					"attempt": 1,
-					"timestamp": "2026-11-12T23:38:31.844Z",
+					"timestamp": "2026-11-13T03:29:38.894Z",
 					"sourceCount": 0,
 					"unitAttempt": 1,
 					"historyItems": 1
@@ -25,8 +25,8 @@
 				{
 					"event": "model_completed",
 					"attempt": 1,
-					"timestamp": "2026-11-12T23:38:31.852Z",
-					"durationMs": 4,
+					"timestamp": "2026-11-13T03:29:38.906Z",
+					"durationMs": 7,
 					"usageKnown": false,
 					"outputBytes": 0,
 					"unitAttempt": 1,
@@ -36,7 +36,7 @@
 					"tool": "list_issues",
 					"event": "tool_started",
 					"attempt": 1,
-					"timestamp": "2026-11-12T23:38:31.855Z",
+					"timestamp": "2026-11-13T03:29:38.911Z",
 					"unitAttempt": 1
 				},
 				{
@@ -44,15 +44,15 @@
 					"bytes": 920,
 					"event": "tool_completed",
 					"attempt": 1,
-					"timestamp": "2026-11-12T23:38:31.860Z",
-					"durationMs": 5,
+					"timestamp": "2026-11-13T03:29:38.920Z",
+					"durationMs": 9,
 					"sourceCount": 0,
 					"unitAttempt": 1
 				},
 				{
 					"event": "model_started",
 					"attempt": 2,
-					"timestamp": "2026-11-12T23:38:31.866Z",
+					"timestamp": "2026-11-13T03:29:38.937Z",
 					"sourceCount": 0,
 					"unitAttempt": 2,
 					"historyItems": 3
@@ -60,8 +60,8 @@
 				{
 					"event": "model_completed",
 					"attempt": 2,
-					"timestamp": "2026-11-12T23:38:31.881Z",
-					"durationMs": 8,
+					"timestamp": "2026-11-13T03:29:38.946Z",
+					"durationMs": 4,
 					"usageKnown": false,
 					"outputBytes": 0,
 					"unitAttempt": 2,
@@ -71,23 +71,23 @@
 					"tool": "get_issue_details",
 					"event": "tool_started",
 					"attempt": 2,
-					"timestamp": "2026-11-12T23:38:31.905Z",
+					"timestamp": "2026-11-13T03:29:38.953Z",
 					"unitAttempt": 2
 				},
 				{
 					"tool": "get_issue_details",
-					"bytes": 3980,
+					"bytes": 5065,
 					"event": "tool_completed",
 					"attempt": 2,
-					"timestamp": "2026-11-12T23:38:31.919Z",
-					"durationMs": 14,
+					"timestamp": "2026-11-13T03:29:38.961Z",
+					"durationMs": 8,
 					"sourceCount": 11,
 					"unitAttempt": 2
 				},
 				{
 					"event": "model_started",
 					"attempt": 3,
-					"timestamp": "2026-11-12T23:38:31.926Z",
+					"timestamp": "2026-11-13T03:29:38.988Z",
 					"sourceCount": 11,
 					"unitAttempt": 3,
 					"historyItems": 5
@@ -95,8 +95,8 @@
 				{
 					"event": "model_completed",
 					"attempt": 3,
-					"timestamp": "2026-11-12T23:38:31.932Z",
-					"durationMs": 3,
+					"timestamp": "2026-11-13T03:29:38.999Z",
+					"durationMs": 5,
 					"usageKnown": false,
 					"outputBytes": 0,
 					"unitAttempt": 3,
@@ -106,7 +106,7 @@
 					"tool": "get_issue_comments",
 					"event": "tool_started",
 					"attempt": 3,
-					"timestamp": "2026-11-12T23:38:31.935Z",
+					"timestamp": "2026-11-13T03:29:39.002Z",
 					"unitAttempt": 3
 				},
 				{
@@ -119,18 +119,18 @@
 				},
 				{
 					"tool": "get_issue_comments",
-					"bytes": 519,
+					"bytes": 612,
 					"event": "tool_completed",
 					"attempt": 3,
-					"timestamp": "2026-11-12T23:38:31.952Z",
-					"durationMs": 17,
+					"timestamp": "2026-11-13T03:29:39.028Z",
+					"durationMs": 26,
 					"sourceCount": 12,
 					"unitAttempt": 3
 				},
 				{
 					"event": "model_started",
 					"attempt": 4,
-					"timestamp": "2026-11-12T23:38:31.959Z",
+					"timestamp": "2026-11-13T03:29:39.051Z",
 					"sourceCount": 12,
 					"unitAttempt": 4,
 					"historyItems": 7
@@ -138,8 +138,8 @@
 				{
 					"event": "model_completed",
 					"attempt": 4,
-					"timestamp": "2026-11-12T23:38:31.965Z",
-					"durationMs": 2,
+					"timestamp": "2026-11-13T03:29:39.070Z",
+					"durationMs": 3,
 					"usageKnown": false,
 					"outputBytes": 1713,
 					"unitAttempt": 4,
@@ -150,7 +150,7 @@
 					"event": "unit_completed",
 					"attempt": 4,
 					"corrected": false,
-					"timestamp": "2026-11-12T23:38:31.969Z",
+					"timestamp": "2026-11-13T03:29:39.076Z",
 					"claimCount": 5,
 					"sourceCount": 12,
 					"unitAttempt": 4

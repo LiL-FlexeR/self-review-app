@@ -341,12 +341,34 @@ export class JobsService {
 						},
 					});
 		const batches = await db.analysisBatch.count({ where: { runId: run.id, level: 0 } });
+		const failed =
+			run.type === 'sync'
+				? await db.taskSnapshot.count({
+						where: {
+							syncRunId: run.id,
+							OR: [
+								{ detailStatus: { in: ['unavailable', 'truncated'] } },
+								{ refreshStatus: 'stale' },
+								{ commentReadState: { in: ['failed', 'truncated'] } },
+							],
+						},
+					})
+				: 0;
+		const batchesCompleted = await db.analysisBatch.count({
+			where: { runId: run.id, state: 'succeeded' },
+		});
+		const batchesFailed = await db.analysisBatch.count({
+			where: { runId: run.id, state: 'failed' },
+		});
 
 		return {
 			discovered: saved,
 			read,
 			saved,
+			failed,
 			batches,
+			batchesCompleted,
+			batchesFailed,
 			totalBatches: Math.ceil(target / 10),
 			targetTasks: target,
 		};
